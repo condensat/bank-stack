@@ -1,0 +1,18 @@
+## Static configuration
+providers:
+  docker: {}
+
+entryPoints:
+  web:
+    address: ":80"
+  
+  websecure:
+    address: ":443"
+  
+certificatesResolvers:
+  le-ssl:
+    acme:
+      email: hello@condensat.space
+      storage: /etc/traefik/acme/acme.json
+      httpChallenge:
+        entryPoint: web
