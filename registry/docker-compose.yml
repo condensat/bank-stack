@@ -1,0 +1,50 @@
+version: "3.7"
+
+services:
+  registry:
+    image: registry:2.7
+    networks:
+      - inbound
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+    volumes:
+      - registry_data:/var/lib/registry
+    labels:
+      - traefik.enable=true
+
+      ## registry-ratelimit
+      - traefik.http.middlewares.registry-ratelimit.ratelimit.average=20
+      - traefik.http.middlewares.registry-ratelimit.ratelimit.burst=1
+      - traefik.http.middlewares.registry-ratelimit.ratelimit.sourcecriterion.requesthost=true
+
+      # http
+      - traefik.http.routers.registry.rule=Host(`registry.condensat.space`)
+      - traefik.http.routers.registry.entrypoints=web
+      - traefik.http.routers.registry.service=registry
+      ## https-redirect
+      - traefik.http.middlewares.https-redirect.redirectscheme.scheme=https
+      - traefik.http.middlewares.https-redirect.redirectscheme.permanent=true    
+      - traefik.http.routers.registry.middlewares=https-redirect
+
+      # tls
+      - traefik.http.routers.registry-ssl.tls=true
+      - traefik.http.routers.registry-ssl.tls.certResolver=le-ssl
+      - traefik.http.routers.registry-ssl.rule=Host(`registry.condensat.space`)
+      - traefik.http.routers.registry-ssl.entrypoints=websecure
+      - traefik.http.routers.registry-ssl.service=registry-ssl
+      - traefik.http.services.registry-ssl.loadBalancer.server.port=5000
+      ## basic-auth
+      - traefik.http.middlewares.condensat-auth.basicauth.users=condensat:$$apr1$$x2x5Azf1$$tdEFuX4yLUW14EXFJMIQq1
+      - traefik.http.routers.registry-ssl.middlewares=condensat-auth
+
+volumes:
+  registry_data: {}
+      
+networks:
+  inbound:
+    external: true
