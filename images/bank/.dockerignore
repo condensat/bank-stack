@@ -1,0 +1,6 @@
+.git
+.gitmodules
+.dockerignore
+.docker-compose*.yml
+Dockerfile
+Makefile
