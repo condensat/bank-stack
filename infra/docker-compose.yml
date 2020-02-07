@@ -1,0 +1,72 @@
+version: "3.7"
+
+services:
+  nats:
+    image: registry.condensat.space/nats:2.1
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+    networks:
+      - messaging
+
+  redis:
+    image: registry.condensat.space/redis:5.0
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+    networks:
+      - database
+    volumes:
+      - redis_data:/etc/redis/database
+
+  mariadb:
+    image: registry.condensat.space/mariadb:10.3
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+    networks:
+      - database
+    ports:
+      # for dev only
+      - target: 3306
+        published: 3306
+        mode: host
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    secrets:
+      - condensat_mariadb
+    environment:
+      MYSQL_USER: condensat
+      MYSQL_DATABASE: condensat
+      MYSQL_PASSWORD_FILE: /run/secrets/condensat_mariadb
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/condensat_mariadb
+    command:
+      - --character-set-server=utf8mb4
+
+secrets:
+  condensat_mariadb:
+    external: true
+
+volumes:
+  mariadb_data: {}
+  redis_data: {}
+      
+networks:
+  messaging:
+    driver: overlay
+    name: messaging
+  database:
+    driver: overlay
+    name: database
