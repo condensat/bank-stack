@@ -44,7 +44,7 @@ services:
       - traefik.docker.network=inbound
 
       # http
-      - traefik.http.routers.bank_api.rule=Host(`bank.condensat.space`)
+      - traefik.http.routers.bank-api.rule=Host(`bank.condensat.space`)
       - traefik.http.routers.bank-api.entrypoints=web
       - traefik.http.routers.bank-api.service=bank-api
       - traefik.http.services.bank-api.loadBalancer.server.port=4242
@@ -70,6 +70,56 @@ services:
       - traefik.http.middlewares.bank-api-high-ratelimit.ratelimit.burst=20
       - traefik.http.middlewares.bank-api-high-ratelimit.ratelimit.sourcecriterion.requesthost=true
       - traefik.http.routers.bank-api-ssl.middlewares=bank-api-high-ratelimit
+
+
+  bank_webapp:
+    image: registry.condensat.space/bank-webapp:latest
+    networks:
+      - inbound
+      - database ## redis logger
+    deploy:
+      replicas: 2
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+    command:
+      - --log=debug
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=inbound
+
+      # http
+      - traefik.http.routers.bank-webapp.rule=Host(`app.condensat.space`)
+      - traefik.http.routers.bank-webapp.entrypoints=web
+      - traefik.http.routers.bank-webapp.service=bank-webapp
+      - traefik.http.services.bank-webapp.loadBalancer.server.port=4420
+      ## bank-webapp-low-ratelimit
+      - traefik.http.middlewares.bank-webapp-low-ratelimit.ratelimit.average=20
+      - traefik.http.middlewares.bank-webapp-low-ratelimit.ratelimit.burst=2
+      - traefik.http.middlewares.bank-webapp-low-ratelimit.ratelimit.sourcecriterion.requesthost=true
+      - traefik.http.routers.bank-webapp.middlewares=bank-webapp-low-ratelimit
+      ## https-redirect
+      - traefik.http.middlewares.https-redirect.redirectscheme.scheme=https
+      - traefik.http.middlewares.https-redirect.redirectscheme.permanent=true    
+      - traefik.http.routers.bank-webapp.middlewares=https-redirect
+
+      # tls
+      - traefik.http.routers.bank-webapp-ssl.tls=true
+      - traefik.http.routers.bank-webapp-ssl.tls.certResolver=le-ssl
+      - traefik.http.routers.bank-webapp-ssl.rule=Host(`app.condensat.space`)
+      - traefik.http.routers.bank-webapp-ssl.entrypoints=websecure
+      - traefik.http.routers.bank-webapp-ssl.service=bank-webapp-ssl
+      - traefik.http.services.bank-webapp-ssl.loadBalancer.server.port=4420
+      ## bank-webapp-high-ratelimit
+      - traefik.http.middlewares.bank-webapp-high-ratelimit.ratelimit.average=100
+      - traefik.http.middlewares.bank-webapp-high-ratelimit.ratelimit.burst=10
+      - traefik.http.middlewares.bank-webapp-high-ratelimit.ratelimit.sourcecriterion.requesthost=true
+      - traefik.http.routers.bank-webapp-webapp.middlewares=bank-webapp-high-ratelimit
+      ## basic-auth
+      - traefik.http.middlewares.webapp-auth.basicauth.users=condensat:$$apr1$$kmhQzbA7$$rhqwTolvwgru0IULB.hQ40
+      - traefik.http.routers.bank-webapp-ssl.middlewares=webapp-auth
 
 secrets:
   condensat_mariadb:
