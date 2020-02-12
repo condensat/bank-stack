@@ -11,7 +11,7 @@ services:
       restart_policy:
         condition: on-failure
     networks:
-      - bank
+      - kyc
     volumes:
       - cache_store:/data
 
@@ -25,16 +25,16 @@ services:
       restart_policy:
         condition: on-failure
     networks:
-      - bank
+      - kyc
     volumes:
       - db_store:/var/lib/mysql
     secrets:
-      - bank_db_password
+      - kyc_db_password
     environment:
-      MYSQL_USER: condensat
-      MYSQL_DATABASE: condensat
-      MYSQL_PASSWORD_FILE: /run/secrets/bank_db_password
-      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/bank_db_password
+      MYSQL_USER: kyc
+      MYSQL_DATABASE: kyc
+      MYSQL_PASSWORD_FILE: /run/secrets/kyc_db_password
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/kyc_db_password
     command:
       - --character-set-server=utf8mb4
 
@@ -50,24 +50,24 @@ services:
       restart_policy:
         condition: on-failure
     networks:
-      - bank
+      - kyc
     ports:
       - target: 3306
-        published: 3306
+        published: 3307
         mode: host
     command:
       - tcp-listen:3306,fork,reuseaddr
       - tcp-connect:db:3306
 
 secrets:
-  bank_db_password:
+  kyc_db_password:
     external: true
 
 volumes:
-  cache_store:
-  db_store:
-    
+  cache_store: {}
+  db_store: {}
+      
 networks:
-  bank:
+  kyc:
     driver: overlay
-    name: bank
+    name: kyc

@@ -2,7 +2,7 @@ version: "3.7"
 
 services:
   logger:
-    image: registry.condensat.space/bank-logger:latest
+    image: registry.condensat.space/condensat-logger:latest
     networks:
       - bank
     deploy:
@@ -15,7 +15,6 @@ services:
     secrets:
       - bank_db_password
     command:
-      - --redisHost=bank_cache
       - --withDatabase=true
       - --dbPassword=/run/secrets/bank_db_password
     labels:

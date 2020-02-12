@@ -1,0 +1,110 @@
+version: "3.7"
+
+services:
+  logger:
+    image: registry.condensat.space/condensat-logger:latest
+    networks:
+      - kyc
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+    secrets:
+      - kyc_db_password
+    command:
+      - --withDatabase=true
+      - --dbName=kyc
+      - --dbUser=kyc
+      - --dbPassword=/run/secrets/kyc_db_password
+    labels:
+      - traefik.enable=false
+
+  worker:
+    image: registry.condensat.space/kyc-worker:latest
+    networks:
+      - condensat
+      - kyc
+    deploy:
+      replicas: 2
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+    secrets:
+      - kyc_db_password
+    command:
+      - --dbName=kyc
+      - --dbUser=kyc
+      - --dbPassword=/run/secrets/kyc_db_password
+      - --log=debug
+    labels:
+      - traefik.enable=false
+
+  webhook:
+    image: registry.condensat.space/kyc-webhook:latest
+    networks:
+      - condensat
+      - kyc
+      - front
+    deploy:
+      replicas: 2
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+    secrets:
+      - synaps_webhook_secrets
+    command:
+      - --synapsSecrets=/run/secrets/synaps_webhook_secrets
+      - --log=debug
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=front
+
+      # http
+      - traefik.http.routers.kyc-webhook.rule=Host(`kyc.condensat.space`)
+      - traefik.http.routers.kyc-webhook.entrypoints=web
+      - traefik.http.routers.kyc-webhook.service=kyc-webhook
+      - traefik.http.services.kyc-webhook.loadBalancer.server.port=4444
+      ## kyc-webhook-low-ratelimit
+      - traefik.http.middlewares.kyc-webhook-low-ratelimit.ratelimit.average=10
+      - traefik.http.middlewares.kyc-webhook-low-ratelimit.ratelimit.burst=2
+      - traefik.http.middlewares.kyc-webhook-low-ratelimit.ratelimit.sourcecriterion.requesthost=true
+      - traefik.http.routers.kyc-webhook.middlewares=kyc-webhook-low-ratelimit
+      ## https-redirect
+      - traefik.http.middlewares.https-redirect.redirectscheme.scheme=https
+      - traefik.http.middlewares.https-redirect.redirectscheme.permanent=true    
+      - traefik.http.routers.kyc-webhook.middlewares=https-redirect
+
+      # tls
+      - traefik.http.routers.kyc-webhook-ssl.tls=true
+      - traefik.http.routers.kyc-webhook-ssl.tls.certResolver=le-ssl
+      - traefik.http.routers.kyc-webhook-ssl.rule=Host(`kyc.condensat.space`)
+      - traefik.http.routers.kyc-webhook-ssl.entrypoints=websecure
+      - traefik.http.routers.kyc-webhook-ssl.service=kyc-webhook-ssl
+      - traefik.http.services.kyc-webhook-ssl.loadBalancer.server.port=4444
+      ## kyc-webhook-high-ratelimit
+      - traefik.http.middlewares.kyc-webhook-high-ratelimit.ratelimit.average=10
+      - traefik.http.middlewares.kyc-webhook-high-ratelimit.ratelimit.burst=2
+      - traefik.http.middlewares.kyc-webhook-high-ratelimit.ratelimit.sourcecriterion.requesthost=true
+      - traefik.http.routers.kyc-webhook-ssl.middlewares=kyc-webhook-high-ratelimit
+
+
+secrets:
+  kyc_db_password:
+    external: true
+  synaps_webhook_secrets:
+    external: true
+      
+networks:
+  condensat:
+    external: true
+  kyc:
+    external: true
+  front:
+    external: true
