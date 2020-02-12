@@ -1,19 +1,7 @@
 version: "3.7"
 
 services:
-  nats:
-    image: registry.condensat.space/nats:2.1
-    deploy:
-      replicas: 1
-      placement:
-        constraints:
-          - node.role == manager
-      restart_policy:
-        condition: on-failure
-    networks:
-      - messaging
-
-  redis:
+  cache:
     image: registry.condensat.space/redis:5.0
     deploy:
       replicas: 1
@@ -23,11 +11,11 @@ services:
       restart_policy:
         condition: on-failure
     networks:
-      - database
+      - bank
     volumes:
-      - redis_data:/etc/redis/database
+      - cache_store:/data
 
-  mariadb:
+  db:
     image: registry.condensat.space/mariadb:10.3
     deploy:
       replicas: 1
@@ -37,36 +25,33 @@ services:
       restart_policy:
         condition: on-failure
     networks:
-      - database
+      - bank
     ports:
       # for dev only
       - target: 3306
         published: 3306
         mode: host
     volumes:
-      - mariadb_data:/var/lib/mysql
+      - db_store:/var/lib/mysql
     secrets:
-      - condensat_mariadb
+      - bank_db_password
     environment:
       MYSQL_USER: condensat
       MYSQL_DATABASE: condensat
-      MYSQL_PASSWORD_FILE: /run/secrets/condensat_mariadb
-      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/condensat_mariadb
+      MYSQL_PASSWORD_FILE: /run/secrets/bank_db_password
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/bank_db_password
     command:
       - --character-set-server=utf8mb4
 
 secrets:
-  condensat_mariadb:
+  bank_db_password:
     external: true
 
 volumes:
-  mariadb_data: {}
-  redis_data: {}
-      
+  cache_store:
+  db_store:
+    
 networks:
-  messaging:
+  bank:
     driver: overlay
-    name: messaging
-  database:
-    driver: overlay
-    name: database
+    name: bank

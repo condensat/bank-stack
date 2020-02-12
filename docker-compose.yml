@@ -1,11 +1,10 @@
 version: "3.7"
 
 services:
-  bank_logger:
+  logger:
     image: registry.condensat.space/bank-logger:latest
     networks:
-      - database
-      - messaging
+      - bank
     deploy:
       replicas: 1
       placement:
@@ -14,17 +13,22 @@ services:
       restart_policy:
         condition: on-failure
     secrets:
-      - condensat_mariadb
+      - bank_db_password
     command:
+      - --redisHost=bank_cache
       - --withDatabase=true
-      - --dbPassword=/run/secrets/condensat_mariadb
+      - --dbPassword=/run/secrets/bank_db_password
+    labels:
+      - traefik.enable=false
 
-  bank_api:
+  api:
     image: registry.condensat.space/bank-api:latest
+    depends_on:
+      - logger
     networks:
-      - inbound
-      - database
-      - messaging
+      - condensat
+      - bank
+      - front
     deploy:
       replicas: 2
       placement:
@@ -33,15 +37,15 @@ services:
       restart_policy:
         condition: on-failure
     secrets:
-      - condensat_mariadb
+      - bank_db_password
       - condensat_password_hash_seed
     command:
-      - --dbPassword=/run/secrets/condensat_mariadb
+      - --dbPassword=/run/secrets/bank_db_password
       - --hash_seed=/run/secrets/condensat_password_hash_seed
       - --log=debug
     labels:
       - traefik.enable=true
-      - traefik.docker.network=inbound
+      - traefik.docker.network=front
 
       # http
       - traefik.http.routers.bank-api.rule=Host(`bank.condensat.space`)
@@ -53,6 +57,8 @@ services:
       - traefik.http.middlewares.bank-api-low-ratelimit.ratelimit.burst=2
       - traefik.http.middlewares.bank-api-low-ratelimit.ratelimit.sourcecriterion.requesthost=true
       - traefik.http.routers.bank-api.middlewares=bank-api-low-ratelimit
+      ## retry when scaling
+      - "traefik.http.middlewares.test-retry.retry.attempts=4"
       ## https-redirect
       - traefik.http.middlewares.https-redirect.redirectscheme.scheme=https
       - traefik.http.middlewares.https-redirect.redirectscheme.permanent=true    
@@ -74,9 +80,12 @@ services:
 
   bank_webapp:
     image: registry.condensat.space/bank-webapp:latest
+    depends_on:
+      - logger
+      - api
     networks:
-      - inbound
-      - database ## redis logger
+      - bank
+      - front
     deploy:
       replicas: 2
       placement:
@@ -88,7 +97,7 @@ services:
       - --log=debug
     labels:
       - traefik.enable=true
-      - traefik.docker.network=inbound
+      - traefik.docker.network=front
 
       # http
       - traefik.http.routers.bank-webapp.rule=Host(`app.condensat.space`)
@@ -116,21 +125,21 @@ services:
       - traefik.http.middlewares.bank-webapp-high-ratelimit.ratelimit.average=100
       - traefik.http.middlewares.bank-webapp-high-ratelimit.ratelimit.burst=10
       - traefik.http.middlewares.bank-webapp-high-ratelimit.ratelimit.sourcecriterion.requesthost=true
-      - traefik.http.routers.bank-webapp-webapp.middlewares=bank-webapp-high-ratelimit
+      - traefik.http.routers.bank-webapp.middlewares=bank-webapp-high-ratelimit
       ## basic-auth
       - traefik.http.middlewares.webapp-auth.basicauth.users=condensat:$$apr1$$kmhQzbA7$$rhqwTolvwgru0IULB.hQ40
       - traefik.http.routers.bank-webapp-ssl.middlewares=webapp-auth
 
 secrets:
-  condensat_mariadb:
+  bank_db_password:
     external: true
   condensat_password_hash_seed:
     external: true
 
 networks:
-  inbound:
+  condensat:
     external: true
-  database:
+  bank:
     external: true
-  messaging:
+  front:
     external: true

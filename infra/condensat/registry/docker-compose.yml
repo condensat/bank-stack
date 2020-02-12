@@ -4,7 +4,7 @@ services:
   registry:
     image: registry:2.7
     networks:
-      - inbound
+      - front
     deploy:
       replicas: 1
       placement:
@@ -46,5 +46,5 @@ volumes:
   registry_data: {}
       
 networks:
-  inbound:
+  front:
     external: true

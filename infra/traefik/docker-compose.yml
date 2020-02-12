@@ -28,7 +28,7 @@ services:
       - traefik_acme:/etc/traefik/acme
     networks:
       - traefik
-      - inbound
+      - front
 
 volumes:
   traefik_acme: {}
@@ -37,6 +37,6 @@ networks:
   traefik:
     driver: overlay
     name: traefik
-  inbound:
+  front:
     driver: overlay
-    name: inbound
+    name: front
