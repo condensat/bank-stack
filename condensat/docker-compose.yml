@@ -1,0 +1,51 @@
+version: "3.7"
+
+services:
+  logger:
+    image: registry.condensat.space/condensat-logger:latest
+    networks:
+      - private
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+    secrets:
+      - condensat_db_password
+    command:
+      - --withDatabase=true
+      - --dbPassword=/run/secrets/condensat_db_password
+    labels:
+      - traefik.enable=false
+  
+  monitor:
+    image: registry.condensat.space/condensat-monitor:latest
+    networks:
+      - private
+      - condensat
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+    secrets:
+      - condensat_db_password
+    command:
+      - --dbPassword=/run/secrets/condensat_db_password
+      - --log=debug
+    labels:
+      - traefik.enable=false
+
+secrets:
+  condensat_db_password:
+    external: true
+
+networks:
+  private:
+    external: true
+  condensat:
+    external: true

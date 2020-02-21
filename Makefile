@@ -1,5 +1,5 @@
 # default target
-build: condensat-logger bank-api bank-webapp kyc-worker kyc-webhook
+build: condensat-logger condensat-monitor bank-api bank-webapp kyc-worker kyc-webhook
 
 login:
 	@echo "$$DOCKER_PASSWORD" | docker login -u condensat --password-stdin registry.condensat.space
@@ -7,6 +7,10 @@ login:
 condensat-logger:
 	@docker build . -f images/bank/Dockerfile --build-arg=BANK_APP_SRC=logger/cmd/grabber/main.go -t registry.condensat.space/condensat-logger
 	@docker push registry.condensat.space/condensat-logger
+
+condensat-monitor:
+	@docker build . -f images/bank/Dockerfile --build-arg=BANK_APP_SRC=monitor/cmd/monitor/main.go  -t registry.condensat.space/condensat-monitor
+	@docker push registry.condensat.space/condensat-monitor
 
 bank-api:
 	@docker build . -f images/bank/Dockerfile --build-arg=BANK_APP_SRC=bank/api/cmd/bank-api/main.go -t registry.condensat.space/bank-api
@@ -33,6 +37,6 @@ clean:
 	@echo docker rmi $(docker rmi registry.condensat.space/bank-logger registry.condensat.space/bank-api)
 	@echo docker prune $(echo y | docker system prune --all)
 
-.PHONY: login build condensat-logger bank-api bank-webapp kyc-worker kyc-webhook
+.PHONY: login build condensat-logger condensat-monitor bank-api bank-webapp kyc-worker kyc-webhook
 
 .SILENT:clean
