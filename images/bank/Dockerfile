@@ -1,5 +1,7 @@
 FROM golang:1.13-alpine3.11 AS builder
 
+RUN apk add --no-cache alpine-sdk
+
 WORKDIR /src/bank
 ADD ./bank/go.* ./
 RUN go mod download
@@ -8,16 +10,14 @@ ARG BANK_APP_SRC=
 
 ADD ./bank ./
 RUN mkdir /stage
-RUN go build -tags netgo -ldflags="-s -w" -trimpath -o "/stage/bank-app" "./${BANK_APP_SRC#bank/}"
+RUN export CGO_ENABLED=1
+RUN go build -tags netgo -ldflags="-s -w" -trimpath -o "/stage/app" "./${BANK_APP_SRC#bank/}"
 
 
-FROM alpine:3.11 AS certs
+FROM alpine:3.11
 RUN apk add --no-cache ca-certificates
 
+COPY --from=builder "/stage/app" /
 
-FROM scratch
-COPY --from=certs /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-COPY --from=builder "/stage/bank-app" /
-
-CMD ["/bank-app"]
-ENTRYPOINT ["/bank-app"]
+CMD ["/app"]
+ENTRYPOINT ["/app"]
