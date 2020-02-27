@@ -77,7 +77,7 @@ services:
       - traefik.http.routers.bank-api-ssl.middlewares=bank-api-high-ratelimit
 
 
-  bank_webapp:
+  webapp:
     image: registry.condensat.space/bank-webapp:latest
     depends_on:
       - logger
