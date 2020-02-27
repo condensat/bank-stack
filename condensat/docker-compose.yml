@@ -39,6 +39,56 @@ services:
       - --log=debug
     labels:
       - traefik.enable=false
+  
+  monitor_stack:
+    image: registry.condensat.space/condensat-monitor-stack:latest
+    networks:
+      - private
+      - condensat
+      - front
+    deploy:
+      replicas: 2
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+    command:
+      - --log=debug
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=front
+
+      # http
+      - traefik.http.routers.monitor-stack.rule=Host(`monitor.condensat.space`)
+      - traefik.http.routers.monitor-stack.entrypoints=web
+      - traefik.http.routers.monitor-stack.service=monitor-stack
+      - traefik.http.services.monitor-stack.loadBalancer.server.port=4000
+
+      ## monitor-stack-low-ratelimit
+      - traefik.http.middlewares.monitor-stack-low-ratelimit.ratelimit.average=20
+      - traefik.http.middlewares.monitor-stack-low-ratelimit.ratelimit.burst=2
+      - traefik.http.middlewares.monitor-stack-low-ratelimit.ratelimit.sourcecriterion.requesthost=true
+      - traefik.http.routers.monitor-stack.middlewares=monitor-stack-low-ratelimit
+      ## retry when scaling
+      - "traefik.http.middlewares.test-retry.retry.attempts=4"
+      ## https-redirect
+      - traefik.http.middlewares.https-redirect.redirectscheme.scheme=https
+      - traefik.http.middlewares.https-redirect.redirectscheme.permanent=true    
+      - traefik.http.routers.monitor-stack.middlewares=https-redirect
+
+      # tls
+      - traefik.http.routers.monitor-stack-ssl.tls=true
+      - traefik.http.routers.monitor-stack-ssl.tls.certResolver=le-ssl
+      - traefik.http.routers.monitor-stack-ssl.rule=Host(`monitor.condensat.space`)
+      - traefik.http.routers.monitor-stack-ssl.entrypoints=websecure
+      - traefik.http.routers.monitor-stack-ssl.service=monitor-stack-ssl
+      - traefik.http.services.monitor-stack-ssl.loadBalancer.server.port=4000
+      ## monitor-stack-high-ratelimit
+      - traefik.http.middlewares.monitor-stack-high-ratelimit.ratelimit.average=200
+      - traefik.http.middlewares.monitor-stack-high-ratelimit.ratelimit.burst=20
+      - traefik.http.middlewares.monitor-stack-high-ratelimit.ratelimit.sourcecriterion.requesthost=true
+      - traefik.http.routers.monitor-stack-ssl.middlewares=monitor-stack-high-ratelimit
 
 secrets:
   condensat_db_password:
@@ -48,4 +98,6 @@ networks:
   private:
     external: true
   condensat:
+    external: true
+  front:
     external: true
