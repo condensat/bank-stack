@@ -4,6 +4,7 @@ services:
   logger:
     image: registry.condensat.space/condensat-logger:latest
     networks:
+      - condensat
       - kyc
     deploy:
       replicas: 1
@@ -100,7 +101,7 @@ secrets:
     external: true
   synaps_webhook_secrets:
     external: true
-      
+
 networks:
   condensat:
     external: true

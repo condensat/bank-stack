@@ -4,6 +4,7 @@ services:
   logger:
     image: registry.condensat.space/condensat-logger:latest
     networks:
+      - condensat
       - private
     deploy:
       replicas: 1

@@ -4,6 +4,7 @@ services:
   logger:
     image: registry.condensat.space/condensat-logger:latest
     networks:
+      - condensat
       - bank
     deploy:
       replicas: 1
@@ -83,6 +84,7 @@ services:
       - logger
       - api
     networks:
+      - condensat
       - bank
       - front
     deploy:
