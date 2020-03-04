@@ -7,7 +7,7 @@ services:
       replicas: 1
       placement:
         constraints:
-          - node.role == manager
+          - node.labels.swiss == true
       restart_policy:
         condition: on-failure
     networks:
@@ -21,7 +21,7 @@ services:
       replicas: 1
       placement:
         constraints:
-          - node.role == manager
+          - node.labels.swiss == true
       restart_policy:
         condition: on-failure
     networks:
@@ -46,11 +46,12 @@ services:
       replicas: 0
       placement:
         constraints:
-          - node.role == manager
+          - node.labels.dev == true
       restart_policy:
         condition: on-failure
     networks:
       - kyc
+      - front
     ports:
       - target: 3306
         published: 3307
@@ -71,3 +72,5 @@ networks:
   kyc:
     driver: overlay
     name: kyc
+  front:
+    external: true

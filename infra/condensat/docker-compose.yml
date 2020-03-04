@@ -3,27 +3,20 @@ version: "3.7"
 services:
   cache:
     image: registry.condensat.space/redis:5.0
-    deploy:
-      replicas: 1
-      placement:
-        constraints:
-          - node.role == manager
-      restart_policy:
-        condition: on-failure
     networks:
       - private
     volumes:
       - cache_store:/data
-
-  db:
-    image: registry.condensat.space/mariadb:10.3
     deploy:
       replicas: 1
       placement:
         constraints:
-          - node.role == manager
+          - node.labels.swiss == true
       restart_policy:
         condition: on-failure
+
+  db:
+    image: registry.condensat.space/mariadb:10.3
     networks:
       - private
     volumes:
@@ -37,20 +30,34 @@ services:
       MYSQL_ROOT_PASSWORD_FILE: /run/secrets/condensat_db_password
     command:
       - --character-set-server=utf8mb4
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.swiss == true
+      restart_policy:
+        condition: on-failure
+
+  nats:
+    image: registry.condensat.space/nats:2.1
+    networks:
+      - private
+      - condensat
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.swiss == true
+      restart_policy:
+        condition: on-failure
 
   dev:
     image: registry.condensat.space/socat:1.0.5
     depends_on:
       - db
-    deploy:
-      replicas: 0
-      placement:
-        constraints:
-          - node.role == manager
-      restart_policy:
-        condition: on-failure
     networks:
       - private
+      - front
     ports:
       - target: 3306
         published: 3305
@@ -58,19 +65,13 @@ services:
     command:
       - tcp-listen:3306,fork,reuseaddr
       - tcp-connect:db:3306
-
-  nats:
-    image: registry.condensat.space/nats:2.1
     deploy:
-      replicas: 1
+      replicas: 0
       placement:
         constraints:
-          - node.role == manager
+          - node.labels.dev == true
       restart_policy:
         condition: on-failure
-    networks:
-      - private
-      - condensat
 
 secrets:
   condensat_db_password:
@@ -87,3 +88,5 @@ networks:
   condensat:
     driver: overlay
     name: condensat
+  front:
+    external: true

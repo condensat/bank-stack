@@ -3,27 +3,20 @@ version: "3.7"
 services:
   cache:
     image: registry.condensat.space/redis:5.0
-    deploy:
-      replicas: 1
-      placement:
-        constraints:
-          - node.role == manager
-      restart_policy:
-        condition: on-failure
     networks:
       - bank
     volumes:
       - cache_store:/data
-
-  db:
-    image: registry.condensat.space/mariadb:10.3
     deploy:
       replicas: 1
       placement:
         constraints:
-          - node.role == manager
+          - node.labels.swiss == true
       restart_policy:
         condition: on-failure
+
+  db:
+    image: registry.condensat.space/mariadb:10.3
     networks:
       - bank
     volumes:
@@ -37,20 +30,21 @@ services:
       MYSQL_ROOT_PASSWORD_FILE: /run/secrets/bank_db_password
     command:
       - --character-set-server=utf8mb4
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.swiss == true
+      restart_policy:
+        condition: on-failure
 
   dev:
     image: registry.condensat.space/socat:1.0.5
     depends_on:
       - db
-    deploy:
-      replicas: 0
-      placement:
-        constraints:
-          - node.role == manager
-      restart_policy:
-        condition: on-failure
     networks:
       - bank
+      - front
     ports:
       - target: 3306
         published: 3306
@@ -58,6 +52,13 @@ services:
     command:
       - tcp-listen:3306,fork,reuseaddr
       - tcp-connect:db:3306
+    deploy:
+      replicas: 0
+      placement:
+        constraints:
+          - node.labels.dev == true
+      restart_policy:
+        condition: on-failure
 
 secrets:
   bank_db_password:
@@ -71,3 +72,5 @@ networks:
   bank:
     driver: overlay
     name: bank
+  front:
+    external: true
