@@ -21,7 +21,7 @@ services:
         - traefik.docker.network=front
 
         # http
-        - traefik.http.routers.portainer.rule=Host(`portainer.condensat.space`)
+        - traefik.http.routers.portainer.rule=(Host(`monitor.condensat.space`) && PathPrefix(`/portainer/`))
         - traefik.http.routers.portainer.entrypoints=web
         - traefik.http.routers.portainer.service=portainer
         - traefik.http.services.portainer.loadBalancer.server.port=9000
@@ -39,15 +39,20 @@ services:
         # tls
         - traefik.http.routers.portainer-ssl.tls=true
         - traefik.http.routers.portainer-ssl.tls.certResolver=le-ssl
-        - traefik.http.routers.portainer-ssl.rule=Host(`portainer.condensat.space`)
+        - traefik.http.routers.portainer-ssl.rule=(Host(`monitor.condensat.space`) && PathPrefix(`/portainer/`))
         - traefik.http.routers.portainer-ssl.entrypoints=websecure
         - traefik.http.routers.portainer-ssl.service=portainer
         - traefik.http.services.portainer-ssl.loadBalancer.server.port=9000
-        ## portainer-hight-ratelimit
-        - traefik.http.middlewares.portainer-hight-ratelimit.ratelimit.average=1000
-        - traefik.http.middlewares.portainer-hight-ratelimit.ratelimit.burst=100
-        - traefik.http.middlewares.portainer-hight-ratelimit.ratelimit.sourcecriterion.requesthost=true
-        - traefik.http.routers.portainer-ssl.middlewares=portainer-hight-ratelimit
+
+        ## portainer-high-ratelimit
+        - traefik.http.middlewares.portainer-high-ratelimit.ratelimit.average=1000
+        - traefik.http.middlewares.portainer-high-ratelimit.ratelimit.burst=100
+        - traefik.http.middlewares.portainer-high-ratelimit.ratelimit.sourcecriterion.requesthost=true
+        ## stripprefix
+        - traefik.http.middlewares.portainer-stripprefix.stripprefix.prefixes=/portainer
+
+        ## add middlewares
+        - traefik.http.routers.portainer-ssl.middlewares=portainer-high-ratelimit,portainer-stripprefix
 
   agent:
     image: registry.condensat.space/portainer_agent:1.5.1

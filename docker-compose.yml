@@ -68,14 +68,16 @@ services:
         - traefik.http.routers.bank-ssl.entrypoints=websecure
         - traefik.http.routers.bank-ssl.service=bank
         - traefik.http.services.bank-ssl.loadBalancer.server.port=4242
+
+        ## retry when scaling
+        - traefik.http.middlewares.bank-retry.retry.attempts=4
         ## bank-high-ratelimit
         - traefik.http.middlewares.bank-high-ratelimit.ratelimit.average=1000
         - traefik.http.middlewares.bank-high-ratelimit.ratelimit.burst=100
         - traefik.http.middlewares.bank-high-ratelimit.ratelimit.sourcecriterion.requesthost=true
-        - traefik.http.routers.bank-ssl.middlewares=bank-high-ratelimit
-        ## retry when scaling
-        - traefik.http.middlewares.bank-retry.retry.attempts=4
-        - traefik.http.routers.bank-ssl.middlewares=bank-retry
+
+        ## add middlewares
+        - traefik.http.routers.bank-ssl.middlewares=bank-retry,bank-high-ratelimit
 
   app:
     image: registry.condensat.space/bank-webapp:latest
@@ -100,7 +102,7 @@ services:
         - traefik.docker.network=front
 
         # http
-        - traefik.http.routers.app.rule=Host(`app.condensat.space`)
+        - traefik.http.routers.app.rule=(Host(`app.condensat.space`) && PathPrefix(`/demo/`))
         - traefik.http.routers.app.entrypoints=web
         - traefik.http.routers.app.service=app
         - traefik.http.services.app.loadBalancer.server.port=4420
@@ -118,18 +120,24 @@ services:
         # tls
         - traefik.http.routers.app-ssl.tls=true
         - traefik.http.routers.app-ssl.tls.certResolver=le-ssl
-        - traefik.http.routers.app-ssl.rule=Host(`app.condensat.space`)
+        - traefik.http.routers.app-ssl.rule=(Host(`app.condensat.space`) && PathPrefix(`/demo/`))
         - traefik.http.routers.app-ssl.entrypoints=websecure
         - traefik.http.routers.app-ssl.service=app
         - traefik.http.services.app-ssl.loadBalancer.server.port=4420
+
+        ## retry when scaling
+        - traefik.http.middlewares.app-retry.retry.attempts=4
         ## app-high-ratelimit
         - traefik.http.middlewares.app-high-ratelimit.ratelimit.average=1000
         - traefik.http.middlewares.app-high-ratelimit.ratelimit.burst=100
         - traefik.http.middlewares.app-high-ratelimit.ratelimit.sourcecriterion.requesthost=true
-        - traefik.http.routers.app-ssl.middlewares=app-high-ratelimit
-        ## retry when scaling
-        - traefik.http.middlewares.app-retry.retry.attempts=4
-        - traefik.http.routers.app-ssl.middlewares=app-retry
+        ## stripprefix
+        - traefik.http.middlewares.app-stripprefix.stripprefix.prefixes=/demo
+        ## basicauth
+        - traefik.http.middlewares.app-auth.basicauth.users=condensat:$$apr1$$kmhQzbA7$$rhqwTolvwgru0IULB.hQ40
+
+        ## add middlewares
+        - traefik.http.routers.app-ssl.middlewares=app-retry,app-high-ratelimit,app-stripprefix,app-auth
 
 secrets:
   bank_db_password:
