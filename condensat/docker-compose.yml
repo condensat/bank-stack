@@ -1,6 +1,61 @@
 version: "3.7"
 
 services:
+  tech:
+    image: registry.condensat.space/condensat-tech-website
+
+    networks:
+      - private
+      - front
+    command:
+      - --log=debug
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.swiss == true
+      restart_policy:
+        condition: on-failure
+      labels:
+        - traefik.enable=true
+        - traefik.docker.network=front
+
+        # http
+        - traefik.http.routers.tech.rule=(HostRegexp(`condensat.space`, `{subdomain:[a-z]+}.condensat.space`)||HostRegexp(`condensat.tech`, `{subdomain:[a-z]+}.condensat.tech`))
+        - traefik.http.routers.tech.priority=1 ## other routers for the same domaine have higher default priority 
+        - traefik.http.routers.tech.entrypoints=web
+        - traefik.http.routers.tech.service=tech
+        - traefik.http.services.tech.loadBalancer.server.port=4420
+
+        ## tech-low-ratelimit
+        - traefik.http.middlewares.tech-low-ratelimit.ratelimit.average=20
+        - traefik.http.middlewares.tech-low-ratelimit.ratelimit.burst=2
+        - traefik.http.middlewares.tech-low-ratelimit.ratelimit.sourcecriterion.requesthost=true
+        ## catch-all
+        - traefik.http.middlewares.tech-catch-all.redirectregex.regex=^http://(.*)condensat.(space|tech)/(.*)
+        - traefik.http.middlewares.tech-catch-all.redirectregex.replacement=https://condensat.space/$${3}
+        - traefik.http.middlewares.tech-catch-all.redirectregex.permanent=true
+        - traefik.http.routers.tech.middlewares=tech-low-ratelimit,tech-catch-all
+
+        # tls
+        - traefik.http.routers.tech-ssl.tls=true
+        - traefik.http.routers.tech-ssl.tls.certResolver=le-ssl
+        - traefik.http.routers.tech-ssl.rule=(HostRegexp(`condensat.space`, `{subdomain:[a-z]+}.condensat.space`)||HostRegexp(`condensat.tech`, `{subdomain:[a-z]+}.condensat.tech`))
+        - traefik.http.routers.tech-ssl.priority=1 ## other routers for the same domaine have higher default priority 
+        - traefik.http.routers.tech-ssl.entrypoints=websecure
+        - traefik.http.routers.tech-ssl.service=tech
+        - traefik.http.services.tech-ssl.loadBalancer.server.port=4420
+
+        ## tech-high-ratelimit
+        - traefik.http.middlewares.tech-high-ratelimit.ratelimit.average=1000
+        - traefik.http.middlewares.tech-high-ratelimit.ratelimit.burst=100
+        - traefik.http.middlewares.tech-high-ratelimit.ratelimit.sourcecriterion.requesthost=true
+        ## retry when scaling
+        - traefik.http.middlewares.tech-retry.retry.attempts=4
+
+        ## add middlewares
+        - traefik.http.routers.tech-ssl.middlewares=tech-retry,tech-high-ratelimit
+
   logger:
     image: registry.condensat.space/condensat-logger:latest
     networks:

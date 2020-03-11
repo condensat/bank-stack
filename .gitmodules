@@ -1,3 +1,6 @@
 [submodule "bank"]
 	path = bank
 	url = keybase://team/condensat.dev/bank
+[submodule "images/tech/website"]
+	path = images/tech/website
+	url = code.condensat.tech:doc/website.git

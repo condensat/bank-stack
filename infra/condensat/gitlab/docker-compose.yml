@@ -21,7 +21,7 @@ services:
         - traefik.docker.network=front
 
         # http
-        - traefik.http.routers.code.rule=(Host(`code.condensat.tech`)||Host(`code.condensat.space`))
+        - traefik.http.routers.code.rule=Host(`code.condensat.tech`)
         - traefik.http.routers.code.entrypoints=web
         - traefik.http.routers.code.service=code
         - traefik.http.services.code.loadBalancer.server.port=80
@@ -39,7 +39,7 @@ services:
         # tls
         - traefik.http.routers.code-ssl.tls=true
         - traefik.http.routers.code-ssl.tls.certResolver=le-ssl
-        - traefik.http.routers.code-ssl.rule=(Host(`code.condensat.tech`)||Host(`code.condensat.space`))
+        - traefik.http.routers.code-ssl.rule=Host(`code.condensat.tech`)
         - traefik.http.routers.code-ssl.entrypoints=websecure
         - traefik.http.routers.code-ssl.service=code
         - traefik.http.services.code-ssl.loadBalancer.server.port=80
