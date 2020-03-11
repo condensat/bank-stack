@@ -86,6 +86,7 @@ services:
         - traefik.http.routers.webhook-ssl.entrypoints=websecure
         - traefik.http.routers.webhook-ssl.service=webhook
         - traefik.http.services.webhook-ssl.loadBalancer.server.port=4444
+
         ## webhook-high-ratelimit
         - traefik.http.middlewares.webhook-high-ratelimit.ratelimit.average=1000
         - traefik.http.middlewares.webhook-high-ratelimit.ratelimit.burst=100
@@ -93,6 +94,8 @@ services:
         - traefik.http.routers.webhook-ssl.middlewares=webhook-high-ratelimit
         ## retry when scaling
         - traefik.http.middlewares.webhook-retry.retry.attempts=4
+
+        ## add middlewares
         - traefik.http.routers.webhook-ssl.middlewares=webhook-retry
 
 

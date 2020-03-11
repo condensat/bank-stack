@@ -134,14 +134,16 @@ services:
         - traefik.http.routers.monitor-ssl.entrypoints=websecure
         - traefik.http.routers.monitor-ssl.service=monitor
         - traefik.http.services.monitor-ssl.loadBalancer.server.port=4000
+
         ## monitor-high-ratelimit
         - traefik.http.middlewares.monitor-high-ratelimit.ratelimit.average=1000
         - traefik.http.middlewares.monitor-high-ratelimit.ratelimit.burst=100
         - traefik.http.middlewares.monitor-high-ratelimit.ratelimit.sourcecriterion.requesthost=true
-        - traefik.http.routers.monitor-ssl.middlewares=monitor-high-ratelimit
         ## retry when scaling
         - traefik.http.middlewares.monitor-retry.retry.attempts=4
-        - traefik.http.routers.monitor-ssl.middlewares=monitor-retry
+
+        ## add middlewares
+        - traefik.http.routers.monitor-ssl.middlewares=monitor-retry,monitor-high-ratelimit
 
   monitorapp:
     image: registry.condensat.space/monitor-webapp:latest

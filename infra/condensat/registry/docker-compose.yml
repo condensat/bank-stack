@@ -41,14 +41,16 @@ services:
         - traefik.http.routers.registry-ssl.entrypoints=websecure
         - traefik.http.routers.registry-ssl.service=registry
         - traefik.http.services.registry-ssl.loadBalancer.server.port=5000
+
         ## registry-high-ratelimit
         - traefik.http.middlewares.registry-high-ratelimit.ratelimit.average=1000
         - traefik.http.middlewares.registry-high-ratelimit.ratelimit.burst=100
         - traefik.http.middlewares.registry-high-ratelimit.ratelimit.sourcecriterion.requesthost=true
-        - traefik.http.routers.registry-ssl.middlewares=registry-high-ratelimit
         ## retry when scaling
         - traefik.http.middlewares.registry-retry.retry.attempts=4
-        - traefik.http.routers.registry-ssl.middlewares=registry-retry
+
+        ## add middlewares
+        - traefik.http.routers.registry-ssl.middlewares=registry-retry,registry-high-ratelimit
 volumes:
   registry_data: {}
       
