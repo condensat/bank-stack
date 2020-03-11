@@ -102,7 +102,7 @@ services:
         - traefik.docker.network=front
 
         # http
-        - traefik.http.routers.app.rule=(Host(`app.condensat.space`) && PathPrefix(`/demo/`))
+        - traefik.http.routers.app.rule=Host(`app.condensat.space`)
         - traefik.http.routers.app.entrypoints=web
         - traefik.http.routers.app.service=app
         - traefik.http.services.app.loadBalancer.server.port=4420
@@ -120,7 +120,7 @@ services:
         # tls
         - traefik.http.routers.app-ssl.tls=true
         - traefik.http.routers.app-ssl.tls.certResolver=le-ssl
-        - traefik.http.routers.app-ssl.rule=(Host(`app.condensat.space`) && PathPrefix(`/demo/`))
+        - traefik.http.routers.app-ssl.rule=Host(`app.condensat.space`)
         - traefik.http.routers.app-ssl.entrypoints=websecure
         - traefik.http.routers.app-ssl.service=app
         - traefik.http.services.app-ssl.loadBalancer.server.port=4420
@@ -131,13 +131,11 @@ services:
         - traefik.http.middlewares.app-high-ratelimit.ratelimit.average=1000
         - traefik.http.middlewares.app-high-ratelimit.ratelimit.burst=100
         - traefik.http.middlewares.app-high-ratelimit.ratelimit.sourcecriterion.requesthost=true
-        ## stripprefix
-        - traefik.http.middlewares.app-stripprefix.stripprefix.prefixes=/demo
         ## basicauth
         - traefik.http.middlewares.app-auth.basicauth.users=condensat:$$apr1$$kmhQzbA7$$rhqwTolvwgru0IULB.hQ40
 
         ## add middlewares
-        - traefik.http.routers.app-ssl.middlewares=app-retry,app-high-ratelimit,app-stripprefix,app-auth
+        - traefik.http.routers.app-ssl.middlewares=app-retry,app-high-ratelimit,app-auth
 
 secrets:
   bank_db_password:
