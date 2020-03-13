@@ -19,7 +19,7 @@ entryPoints:
 certificatesResolvers:
   le-ssl:
     acme:
-      email: hello@condensat.space
+      email: hello@condensat.tech
       storage: /etc/traefik/acme/acme.json
       httpChallenge:
         entryPoint: web
