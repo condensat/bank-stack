@@ -1,5 +1,5 @@
 # default target
-build: condensat-logger condensat-tech-website condensat-monitor condensat-monitor-stack monitor-webapp bank-api bank-webapp kyc-worker kyc-webhook
+build: condensat-logger condensat-tech-website condensat-monitor condensat-monitor-stack monitor-webapp bank-api bank-webapp kyc-worker kyc-webhook bank-currency-rate
 
 login:
 	@echo "$$DOCKER_PASSWORD" | docker login -u condensat --password-stdin registry.condensat.space
@@ -45,11 +45,15 @@ kyc-webhook:
 	@docker build . -f images/bank/Dockerfile --build-arg=BANK_APP_SRC=kyc/cmd/webhook/main.go -t registry.condensat.space/kyc-webhook
 	@docker push registry.condensat.space/kyc-webhook
 
+bank-currency-rate:
+	@docker build . -f images/bank/Dockerfile --build-arg=BANK_APP_SRC=bank/currency/rate/cmd/grabber/main.go -t registry.condensat.space/bank-currency-rate
+	@docker push registry.condensat.space/bank-currency-rate
+
 
 clean:
 	@echo docker rmi $(docker rmi registry.condensat.space/bank-logger registry.condensat.space/bank-api)
 	@echo docker prune $(echo y | docker system prune --all)
 
-.PHONY: login build condensat-logger condensat-tech-website bank-webapp-base condensat-monitor monitor-webapp condensat-monitor-stack bank-api bank-webapp kyc-worker kyc-webhook
+.PHONY: login build condensat-logger condensat-tech-website bank-webapp-base condensat-monitor monitor-webapp condensat-monitor-stack bank-api bank-webapp kyc-worker kyc-webhook bank-currency-rate
 
 .SILENT:clean
