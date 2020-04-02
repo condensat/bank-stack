@@ -137,10 +137,36 @@ services:
         ## add middlewares
         - traefik.http.routers.app-ssl.middlewares=app-retry,app-high-ratelimit,app-auth
 
+  currency_rate:
+    image: registry.condensat.space/bank-currency-rate:latest
+    depends_on:
+      - logger
+    networks:
+      - condensat
+      - bank
+    secrets:
+      - bank_db_password
+      - openexchangerates_app_id
+    command:
+      - --dbPassword=/run/secrets/bank_db_password
+      - --appId=/run/secrets/openexchangerates_app_id
+      - --fetchInterval=1h
+      - --fetchDelay=5s
+      - --log=debug
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.swiss == true
+      restart_policy:
+        condition: on-failure
+
 secrets:
   bank_db_password:
     external: true
   condensat_password_hash_seed:
+    external: true
+  openexchangerates_app_id:
     external: true
 
 networks:
