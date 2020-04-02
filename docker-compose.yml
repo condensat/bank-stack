@@ -161,6 +161,26 @@ services:
       restart_policy:
         condition: on-failure
 
+  accounting:
+    image: registry.condensat.space/bank-accounting:latest
+    depends_on:
+      - logger
+    networks:
+      - condensat
+      - bank
+    secrets:
+      - bank_db_password
+    command:
+      - --dbPassword=/run/secrets/bank_db_password
+      - --log=info
+    deploy:
+      replicas: 2
+      placement:
+        constraints:
+          - node.labels.swiss == true
+      restart_policy:
+        condition: on-failure
+
 secrets:
   bank_db_password:
     external: true

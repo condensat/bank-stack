@@ -1,5 +1,5 @@
 # default target
-build: condensat-logger condensat-tech-website condensat-monitor condensat-monitor-stack monitor-webapp bank-api bank-webapp kyc-worker kyc-webhook bank-currency-rate
+build: condensat-logger condensat-tech-website condensat-monitor condensat-monitor-stack monitor-webapp bank-api bank-webapp bank-accounting kyc-worker kyc-webhook bank-currency-rate
 
 login:
 	@echo "$$DOCKER_PASSWORD" | docker login -u condensat --password-stdin registry.condensat.space
@@ -37,6 +37,10 @@ bank-webapp: bank-webapp-base
 	@docker build . -f images/bank/webapp/Dockerfile --build-arg=BANK_WEBAPP_DOCKER_DIR=images/bank/webapp -t registry.condensat.space/bank-webapp
 	@docker push registry.condensat.space/bank-webapp
 
+bank-accounting:
+	@docker build . -f images/bank/Dockerfile --build-arg=BANK_APP_SRC=bank/accounting/cmd/bankaccounting/main.go -t registry.condensat.space/bank-accounting
+	@docker push registry.condensat.space/bank-accounting
+
 kyc-worker:
 	@docker build . -f images/bank/Dockerfile --build-arg=BANK_APP_SRC=kyc/cmd/worker/main.go -t registry.condensat.space/kyc-worker
 	@docker push registry.condensat.space/kyc-worker
@@ -54,6 +58,6 @@ clean:
 	@echo docker rmi $(docker rmi registry.condensat.space/bank-logger registry.condensat.space/bank-api)
 	@echo docker prune $(echo y | docker system prune --all)
 
-.PHONY: login build condensat-logger condensat-tech-website bank-webapp-base condensat-monitor monitor-webapp condensat-monitor-stack bank-api bank-webapp kyc-worker kyc-webhook bank-currency-rate
+.PHONY: login build condensat-logger condensat-tech-website bank-webapp-base condensat-monitor monitor-webapp condensat-monitor-stack bank-api bank-webapp bank-accounting kyc-worker kyc-webhook bank-currency-rate
 
 .SILENT:clean
