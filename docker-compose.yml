@@ -31,10 +31,12 @@ services:
       - bank_db_password
       - condensat_password_hash_seed
       - bank_api_secureid
+      - bank_api_oauth_keys
     command:
       - --dbPassword=/run/secrets/bank_db_password
       - --hash_seed=/run/secrets/condensat_password_hash_seed
       - --secureId=/run/secrets/bank_api_secureid
+      - --oauthkeys=/run/secrets/bank_api_oauth_keys
       - --log=debug
     deploy:
       replicas: 2
@@ -189,6 +191,8 @@ secrets:
   condensat_password_hash_seed:
     external: true
   bank_api_secureid:
+    external: true
+  bank_api_oauth_keys:
     external: true
   openexchangerates_app_id:
     external: true
