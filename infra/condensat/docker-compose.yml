@@ -73,6 +73,26 @@ services:
       restart_policy:
         condition: on-failure
 
+  devnats:
+    image: registry.condensat.space/socat:1.0.5
+    networks:
+      - condensat
+      - front
+    ports:
+      - target: 4222
+        published: 4222
+        mode: host
+    command:
+      - tcp-listen:4222,fork,reuseaddr
+      - tcp-connect:nats:4222
+    deploy:
+      replicas: 0
+      placement:
+        constraints:
+          - node.labels.dev == true
+      restart_policy:
+        condition: on-failure
+
 secrets:
   condensat_db_password:
     external: true

@@ -30,9 +30,11 @@ services:
     secrets:
       - bank_db_password
       - condensat_password_hash_seed
+      - bank_api_secureid
     command:
       - --dbPassword=/run/secrets/bank_db_password
       - --hash_seed=/run/secrets/condensat_password_hash_seed
+      - --secureId=/run/secrets/bank_api_secureid
       - --log=debug
     deploy:
       replicas: 2
@@ -161,10 +163,32 @@ services:
       restart_policy:
         condition: on-failure
 
+  accounting:
+    image: registry.condensat.space/bank-accounting:latest
+    depends_on:
+      - logger
+    networks:
+      - condensat
+      - bank
+    secrets:
+      - bank_db_password
+    command:
+      - --dbPassword=/run/secrets/bank_db_password
+      - --log=info
+    deploy:
+      replicas: 2
+      placement:
+        constraints:
+          - node.labels.swiss == true
+      restart_policy:
+        condition: on-failure
+
 secrets:
   bank_db_password:
     external: true
   condensat_password_hash_seed:
+    external: true
+  bank_api_secureid:
     external: true
   openexchangerates_app_id:
     external: true
