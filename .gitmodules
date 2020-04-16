@@ -1,0 +1,9 @@
+[submodule "bank"]
+	path = bank
+	url = keybase://team/condensat.dev/bank
+[submodule "images/tech/website"]
+	path = images/tech/website
+	url = code.condensat.tech:doc/website.git
+[submodule "infra/condensat/radicale/src"]
+	path = infra/condensat/radicale/src
+	url = https://github.com/Kozea/Radicale.git

@@ -1,0 +1,65 @@
+version: "3.7"
+
+services:
+  radicale:
+    image: registry.condensat.space/radicale:2.1.11
+
+    networks:
+      - front
+    volumes:
+      - radicale_config:/etc/radicale
+      - radicale_data:/var/lib/radicale
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.swiss == true
+      restart_policy:
+        condition: on-failure
+      labels:
+        - traefik.enable=true
+        - traefik.docker.network=front
+
+        # http
+        - traefik.http.routers.radicale.rule=(Host(`condensat.tech`) && PathPrefix(`/radicale/`))
+        - traefik.http.routers.radicale.entrypoints=web
+        - traefik.http.routers.radicale.service=radicale
+        - traefik.http.services.radicale.loadBalancer.server.port=5232
+        ## radicale-low-ratelimit
+        - traefik.http.middlewares.radicale-low-ratelimit.ratelimit.average=20
+        - traefik.http.middlewares.radicale-low-ratelimit.ratelimit.burst=2
+        - traefik.http.middlewares.radicale-low-ratelimit.ratelimit.sourcecriterion.requesthost=true
+        - traefik.http.routers.radicale.middlewares=radicale-low-ratelimit
+
+        ## radicale-https-redirect
+        - traefik.http.middlewares.radicale-https-redirect.redirectscheme.scheme=https
+        - traefik.http.middlewares.radicale-https-redirect.redirectscheme.permanent=true    
+        - traefik.http.routers.radicale.middlewares=radicale-https-redirect
+
+        # tls
+        - traefik.http.routers.radicale-ssl.tls=true
+        - traefik.http.routers.radicale-ssl.tls.certResolver=le-ssl
+        - traefik.http.routers.radicale-ssl.rule=(Host(`condensat.tech`) && PathPrefix(`/radicale/`))
+        - traefik.http.routers.radicale-ssl.entrypoints=websecure
+        - traefik.http.routers.radicale-ssl.service=radicale
+        - traefik.http.services.radicale-ssl.loadBalancer.server.port=5232
+
+        ## radicale-high-ratelimit
+        - traefik.http.middlewares.radicale-high-ratelimit.ratelimit.average=1000
+        - traefik.http.middlewares.radicale-high-ratelimit.ratelimit.burst=100
+        - traefik.http.middlewares.radicale-high-ratelimit.ratelimit.sourcecriterion.requesthost=true
+        ## stripprefix
+        - traefik.http.middlewares.radicale-stripprefix.stripprefix.prefixes=/radicale
+        ## radicale-script-name
+        - "traefik.http.middlewares.radicale-script-name.headers.customrequestheaders.X-Script-Name=/radicale"
+
+        ## add middlewares
+        - traefik.http.routers.radicale-ssl.middlewares=radicale-high-ratelimit,radicale-stripprefix,radicale-script-name
+
+networks:
+  front:
+    external: true
+
+volumes:
+  radicale_config: {}
+  radicale_data: {}

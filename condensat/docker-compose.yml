@@ -1,0 +1,224 @@
+version: "3.7"
+
+services:
+  tech:
+    image: registry.condensat.space/condensat-tech-website
+
+    networks:
+      - private
+      - front
+    command:
+      - --log=debug
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.swiss == true
+      restart_policy:
+        condition: on-failure
+      labels:
+        - traefik.enable=true
+        - traefik.docker.network=front
+
+        # http
+        - traefik.http.routers.tech.rule=HostRegexp(`condensat.tech`, `{subdomain:[a-z]+}.condensat.tech`)
+        
+        - traefik.http.routers.tech.priority=1 ## other routers for the same domaine have higher default priority 
+        - traefik.http.routers.tech.entrypoints=web
+        - traefik.http.routers.tech.service=tech
+        - traefik.http.services.tech.loadBalancer.server.port=4420
+        
+        # setup middlewares
+        ## tech-low-ratelimit
+        - traefik.http.middlewares.tech-low-ratelimit.ratelimit.average=20
+        - traefik.http.middlewares.tech-low-ratelimit.ratelimit.burst=2
+        - traefik.http.middlewares.tech-low-ratelimit.ratelimit.sourcecriterion.requesthost=true
+        ## tech-https-redirect
+        - traefik.http.middlewares.tech-https-redirect.redirectregex.regex=^http://(www.)?condensat.tech/(.*)
+        - traefik.http.middlewares.tech-https-redirect.redirectregex.replacement=https://$${1}condensat.tech/$${2}
+        - traefik.http.middlewares.tech-https-redirect.redirectregex.permanent=true
+        ## tech-catch-all
+        - traefik.http.middlewares.tech-catch-all.redirectregex.regex=^http://(.*.)condensat.tech/(.*)
+        - traefik.http.middlewares.tech-catch-all.redirectregex.replacement=https://condensat.tech/$${2}
+        - traefik.http.middlewares.tech-catch-all.redirectregex.permanent=true
+        ## middleware chain
+        - traefik.http.routers.tech.middlewares=tech-low-ratelimit,tech-https-redirect,tech-catch-all
+
+        # tls
+        - traefik.http.routers.tech-ssl.tls=true
+        - traefik.http.routers.tech-ssl.tls.certResolver=le-ssl
+        - traefik.http.routers.tech-ssl.rule=(Host(`condensat.tech`)||Host(`www.condensat.tech`))
+        - traefik.http.routers.tech-ssl.priority=1 ## other routers for the same domaine have higher default priority 
+        - traefik.http.routers.tech-ssl.entrypoints=websecure
+        - traefik.http.routers.tech-ssl.service=tech
+        - traefik.http.services.tech-ssl.loadBalancer.server.port=4420
+
+        ## tech-high-ratelimit
+        - traefik.http.middlewares.tech-high-ratelimit.ratelimit.average=1000
+        - traefik.http.middlewares.tech-high-ratelimit.ratelimit.burst=100
+        - traefik.http.middlewares.tech-high-ratelimit.ratelimit.sourcecriterion.requesthost=true
+        ## retry when scaling
+        - traefik.http.middlewares.tech-retry.retry.attempts=4
+
+        ## add middlewares
+        - traefik.http.routers.tech-ssl.middlewares=tech-retry,tech-high-ratelimit
+
+  logger:
+    image: registry.condensat.space/condensat-logger:latest
+    networks:
+      - private
+      - condensat
+    secrets:
+      - condensat_db_password
+    command:
+      - --withDatabase=true
+      - --dbPassword=/run/secrets/condensat_db_password
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.swiss == true
+      restart_policy:
+        condition: on-failure
+  
+  worker:
+    image: registry.condensat.space/condensat-monitor:latest
+    networks:
+      - private
+      - condensat
+    secrets:
+      - condensat_db_password
+    command:
+      - --dbPassword=/run/secrets/condensat_db_password
+      - --log=debug
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.swiss == true
+      restart_policy:
+        condition: on-failure
+  
+  monitor:
+    image: registry.condensat.space/condensat-monitor-stack:latest
+    networks:
+      - private
+      - condensat
+      - front
+    command:
+      - --log=debug
+    deploy:
+      replicas: 2
+      placement:
+        constraints:
+          - node.labels.swiss == true
+      restart_policy:
+        condition: on-failure
+      labels:
+        - traefik.enable=true
+        - traefik.docker.network=front
+
+        # http
+        - traefik.http.routers.monitor.rule=Host(`monitor.condensat.space`)
+        - traefik.http.routers.monitor.entrypoints=web
+        - traefik.http.routers.monitor.service=monitor
+        - traefik.http.services.monitor.loadBalancer.server.port=4000
+
+        ## monitor-low-ratelimit
+        - traefik.http.middlewares.monitor-low-ratelimit.ratelimit.average=20
+        - traefik.http.middlewares.monitor-low-ratelimit.ratelimit.burst=2
+        - traefik.http.middlewares.monitor-low-ratelimit.ratelimit.sourcecriterion.requesthost=true
+        - traefik.http.routers.monitor.middlewares=monitor-low-ratelimit
+        ## https-redirect
+        - traefik.http.middlewares.https-redirect.redirectscheme.scheme=https
+        - traefik.http.middlewares.https-redirect.redirectscheme.permanent=true    
+        - traefik.http.routers.monitor.middlewares=https-redirect
+
+        # tls
+        - traefik.http.routers.monitor-ssl.tls=true
+        - traefik.http.routers.monitor-ssl.tls.certResolver=le-ssl
+        - traefik.http.routers.monitor-ssl.rule=Host(`monitor.condensat.space`)
+        - traefik.http.routers.monitor-ssl.entrypoints=websecure
+        - traefik.http.routers.monitor-ssl.service=monitor
+        - traefik.http.services.monitor-ssl.loadBalancer.server.port=4000
+
+        ## monitor-high-ratelimit
+        - traefik.http.middlewares.monitor-high-ratelimit.ratelimit.average=1000
+        - traefik.http.middlewares.monitor-high-ratelimit.ratelimit.burst=100
+        - traefik.http.middlewares.monitor-high-ratelimit.ratelimit.sourcecriterion.requesthost=true
+        ## retry when scaling
+        - traefik.http.middlewares.monitor-retry.retry.attempts=4
+
+        ## add middlewares
+        - traefik.http.routers.monitor-ssl.middlewares=monitor-retry,monitor-high-ratelimit
+
+  monitorapp:
+    image: registry.condensat.space/monitor-webapp:latest
+    depends_on:
+      - logger
+    networks:
+      - condensat
+      - private
+      - front
+    command:
+      - --log=debug
+    deploy:
+      replicas: 2
+      placement:
+        constraints:
+          - node.labels.swiss == true
+      restart_policy:
+        condition: on-failure
+      labels:
+        - traefik.enable=true
+        - traefik.docker.network=front
+
+        # http
+        - traefik.http.routers.monitorapp.rule=(Host(`app.condensat.space`) && PathPrefix(`/monitor/`))
+        - traefik.http.routers.monitorapp.entrypoints=web
+        - traefik.http.routers.monitorapp.service=monitorapp
+        - traefik.http.services.monitorapp.loadBalancer.server.port=4420
+
+        ## monitorapp-low-ratelimit
+        - traefik.http.middlewares.monitorapp-low-ratelimit.ratelimit.average=20
+        - traefik.http.middlewares.monitorapp-low-ratelimit.ratelimit.burst=2
+        - traefik.http.middlewares.monitorapp-low-ratelimit.ratelimit.sourcecriterion.requesthost=true
+        - traefik.http.routers.monitorapp.middlewares=monitorapp-low-ratelimit
+        ## https-redirect
+        - traefik.http.middlewares.https-redirect.redirectscheme.scheme=https
+        - traefik.http.middlewares.https-redirect.redirectscheme.permanent=true    
+        - traefik.http.routers.monitorapp.middlewares=https-redirect
+
+        # tls
+        - traefik.http.routers.monitorapp-ssl.tls=true
+        - traefik.http.routers.monitorapp-ssl.tls.certResolver=le-ssl
+        - traefik.http.routers.monitorapp-ssl.rule=(Host(`app.condensat.space`) && PathPrefix(`/monitor/`))
+        - traefik.http.routers.monitorapp-ssl.entrypoints=websecure
+        - traefik.http.routers.monitorapp-ssl.service=monitorapp
+        - traefik.http.services.monitorapp-ssl.loadBalancer.server.port=4420
+
+        ## retry when scaling
+        - traefik.http.middlewares.monitorapp-retry.retry.attempts=4
+        ## monitorapp-high-ratelimit
+        - traefik.http.middlewares.monitorapp-high-ratelimit.ratelimit.average=1000
+        - traefik.http.middlewares.monitorapp-high-ratelimit.ratelimit.burst=100
+        - traefik.http.middlewares.monitorapp-high-ratelimit.ratelimit.sourcecriterion.requesthost=true
+        ## stripprefix
+        - traefik.http.middlewares.monitorapp-stripprefix.stripprefix.prefixes=/monitor        
+        ## basicauth
+        - traefik.http.middlewares.monitorapp-auth.basicauth.users=condensat:$$apr1$$kmhQzbA7$$rhqwTolvwgru0IULB.hQ40
+
+        ## add middlewares
+        - traefik.http.routers.monitorapp-ssl.middlewares=monitorapp-retry,monitorapp-high-ratelimit,monitorapp-stripprefix,monitorapp-auth
+
+secrets:
+  condensat_db_password:
+    external: true
+
+networks:
+  private:
+    external: true
+  condensat:
+    external: true
+  front:
+    external: true

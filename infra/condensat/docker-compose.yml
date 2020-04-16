@@ -1,0 +1,112 @@
+version: "3.7"
+
+services:
+  cache:
+    image: registry.condensat.space/redis:5.0
+    networks:
+      - private
+    volumes:
+      - cache_store:/data
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.swiss == true
+      restart_policy:
+        condition: on-failure
+
+  db:
+    image: registry.condensat.space/mariadb:10.3
+    networks:
+      - private
+    volumes:
+      - db_store:/var/lib/mysql
+    secrets:
+      - condensat_db_password
+    environment:
+      MYSQL_USER: condensat
+      MYSQL_DATABASE: condensat
+      MYSQL_PASSWORD_FILE: /run/secrets/condensat_db_password
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/condensat_db_password
+    command:
+      - --character-set-server=utf8mb4
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.swiss == true
+      restart_policy:
+        condition: on-failure
+
+  nats:
+    image: registry.condensat.space/nats:2.1
+    networks:
+      - private
+      - condensat
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.swiss == true
+      restart_policy:
+        condition: on-failure
+
+  dev:
+    image: registry.condensat.space/socat:1.0.5
+    depends_on:
+      - db
+    networks:
+      - private
+      - front
+    ports:
+      - target: 3306
+        published: 3305
+        mode: host
+    command:
+      - tcp-listen:3306,fork,reuseaddr
+      - tcp-connect:db:3306
+    deploy:
+      replicas: 0
+      placement:
+        constraints:
+          - node.labels.dev == true
+      restart_policy:
+        condition: on-failure
+
+  devnats:
+    image: registry.condensat.space/socat:1.0.5
+    networks:
+      - condensat
+      - front
+    ports:
+      - target: 4222
+        published: 4222
+        mode: host
+    command:
+      - tcp-listen:4222,fork,reuseaddr
+      - tcp-connect:nats:4222
+    deploy:
+      replicas: 0
+      placement:
+        constraints:
+          - node.labels.dev == true
+      restart_policy:
+        condition: on-failure
+
+secrets:
+  condensat_db_password:
+    external: true
+
+volumes:
+  cache_store: {}
+  db_store: {}
+
+networks:
+  private:
+    driver: overlay
+    name: private 
+  condensat:
+    driver: overlay
+    name: condensat
+  front:
+    external: true

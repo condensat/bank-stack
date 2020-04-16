@@ -1,0 +1,76 @@
+version: "3.7"
+
+services:
+  cache:
+    image: registry.condensat.space/redis:5.0
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.swiss == true
+      restart_policy:
+        condition: on-failure
+    networks:
+      - kyc
+    volumes:
+      - cache_store:/data
+
+  db:
+    image: registry.condensat.space/mariadb:10.3
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.swiss == true
+      restart_policy:
+        condition: on-failure
+    networks:
+      - kyc
+    volumes:
+      - db_store:/var/lib/mysql
+    secrets:
+      - kyc_db_password
+    environment:
+      MYSQL_USER: kyc
+      MYSQL_DATABASE: kyc
+      MYSQL_PASSWORD_FILE: /run/secrets/kyc_db_password
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/kyc_db_password
+    command:
+      - --character-set-server=utf8mb4
+
+  dev:
+    image: registry.condensat.space/socat:1.0.5
+    depends_on:
+      - db
+    deploy:
+      replicas: 0
+      placement:
+        constraints:
+          - node.labels.dev == true
+      restart_policy:
+        condition: on-failure
+    networks:
+      - kyc
+      - front
+    ports:
+      - target: 3306
+        published: 3307
+        mode: host
+    command:
+      - tcp-listen:3306,fork,reuseaddr
+      - tcp-connect:db:3306
+
+secrets:
+  kyc_db_password:
+    external: true
+
+volumes:
+  cache_store: {}
+  db_store: {}
+      
+networks:
+  kyc:
+    driver: overlay
+    name: kyc
+  front:
+    external: true

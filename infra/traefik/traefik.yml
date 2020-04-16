@@ -1,0 +1,25 @@
+## Static configuration
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    swarmMode: true
+    network: front
+    exposedByDefault: false
+
+entryPoints:
+  web:
+    address: ":80"
+  
+  websecure:
+    address: ":443"
+
+  ssh:
+    address: ":2222"  
+
+certificatesResolvers:
+  le-ssl:
+    acme:
+      email: hello@condensat.tech
+      storage: /etc/traefik/acme/acme.json
+      httpChallenge:
+        entryPoint: web

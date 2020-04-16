@@ -1,0 +1,700 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title>Monitor Api Demo</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <link rel="stylesheet" href="css/bootstrap.min.css"
+        integrity="sha256-L/W5Wfqfa0sdBNIKN9cG6QA5F2qx4qICmU2VgLruv9Y="
+        crossorigin="anonymous"></link>
+
+    <link rel="stylesheet" href="css/font-awesome.min.css"
+        integrity="sha256-eZrrJcwDc/3uDhsdt61sL2oOBY362qM3lon1gyExkL0="
+        crossorigin="anonymous"></link>
+
+    <script src="js/jquery.min.js"
+        integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo="
+        crossorigin="anonymous"></script>
+
+    <script src="js/popper.min.js"
+        integrity="sha256-/ijcOLwFf26xEYAjW75FizKVo5tnTYiQddPZoLUHHZ8="
+        crossorigin="anonymous"></script>
+
+    <script src="js/bootstrap.min.js"
+        integrity="sha256-WqU1JavFxSAMcLP2WIOI+GB2zWmShMI82mTpLDcqFUg="
+        crossorigin="anonymous"></script>
+
+    <script src="js/moment.min.js"
+        integrity="sha256-4iQZ6BVL4qNKlQ27TExEhBN1HFPvAvAMbFavKKosSWQ="
+        crossorigin="anonymous"></script> 
+
+    <script src="js/Chart.min.js"
+        integrity="sha256-R4pqcOYV8lt7snxMQO/HSbVCFRPMdrhAFMH+vr9giYI="
+        crossorigin="anonymous"></script> 
+
+    <script src="js/monitor-api.min.js"
+        integrity="sha256-VCrVGzA4apwRUvLlZUFPIKSESGosz3hKIdxuwrjGK0Q="
+        crossorigin="anonymous"></script> 
+
+<style>
+        #service-chart-canvas {
+            -moz-user-select: none;
+            -webkit-user-select: none;
+            -ms-user-select: none;
+        }
+
+        #login-info {
+            /* background: #53a8f891; */
+            text-align: right;
+            padding-top: 0px;
+            padding-bottom: 0px;
+        }
+        #backend-status {
+            background: #dbdbdbce;
+            padding-top: 0px;
+            padding-bottom: 0px;
+        }
+
+        #core-status {
+            background: #dbdbdbce;
+            padding-top: 0px;
+            padding-bottom: 0px;
+        }
+
+        .mon-
+
+        .panel-log {
+            background: #dddddddd;
+            text-align: left;
+            padding-top: 0px;
+            padding-bottom: 0px;
+        }
+
+        .panel-err {
+            background: #f582827a;
+            text-align: left;
+            padding-top: 0px;
+            padding-bottom: 0px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container-fluid">
+        <h1>Monitor Api Demo</h1>
+
+        <div class="row mt-3" id="login-info">
+            <div class="col-12 text-right">
+                <button type="button" class="btn btn-primary" id="btnLogin" style="display: none" data-toggle="modal"
+                    data-target="#loginModal">Login</button>
+                <button type="button" class="btn btn-primary" id="btnLogout" style="display: none"
+                    onclick="closeSession()">Logout</button>
+                <!-- <button type="button" class="btn btn-primary" id="btnChart" data-toggle="modal"
+                    data-target="#chartModal">Chart</button> -->
+            </div>
+                
+            <!-- Modal -->
+            <div class="modal fade" id="loginModal" tabindex="-1" role="dialog" aria-labelledby="loginModalLabel"
+                aria-hidden="true">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="loginModalLabel">Login</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="input-group mb-3" id="credentials">
+                                <div class="session">
+                                    <input type="text" class="form-control" id="login" placeholder="login">
+                                </div>
+                                <div class="session">
+                                    <input type="password" class="form-control" id="password" placeholder="password">
+                                </div>
+                                <button type="buton" class="btn btn-primary default"
+                                    onclick="openSession($('#login').val(), $('#password').val())">Login</button>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal -->
+
+        <div class="modal fade" id="chartModal" tabindex="-1" role="dialog" aria-labelledby="chartModalLabel"
+            aria-hidden="true">
+            <div class="modal-dialog" role="document" style="width:100%;max-width:1250px;height: 90%">
+                <div class="modal-content" style="width: 100%;height: 100%;">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="chartModalLabel">Service XXX</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div style="width:100%;height: 100%;">
+                            <canvas id="service-chart-canvas"></canvas>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <p>last update: <span id="mon-back-chart-lastupdate"></span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="row mt-3" id="backend-status">
+            <div>
+                <div class="col-12 text-right">
+                    last update: <span id="mon-back-lastupdate"></span>
+                </div>
+                <h2>Backend Status</h2>
+                <div id="mon-back-stack-list" class="col-12 text-left">
+            </div>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-12 text-left" id="core-status">
+                <h2>Core Status</h2>
+                <div>
+                    <h3>node1</h3>
+                    <div>Status.</div>
+                    <div class="row" id="mon-node1" style="padding: 15px">
+                        <div class="card" id="mon-node1-BTC" style="width: 14rem;">
+                            <div class="card-body">
+                                <h5 class="card-title">node1 - BTC</h5>
+                                <p class="card-text">Infos.</p>
+                            </div>
+                        </div>
+                        <div class="card" id="mon-node1-CON" style="width: 14rem;">
+                            <div class="card-body">
+                                <h5 class="card-title">node1 - CON</h5>
+                                <p class="card-text">Infos.</p>
+                            </div>
+                        </div>
+                        <div class="card" id="mon-node1-ELEMENTS" style="width: 14rem;">
+                            <div class="card-body">
+                                <h5 class="card-title">node1 - ELEMENTS</h5>
+                                <p class="card-text">Infos.</p>
+                            </div>
+                        </div>
+                        <div class="card" id="mon-node1-KMD" style="width: 14rem;">
+                            <div class="card-body">
+                                <h5 class="card-title">node1 - KMD</h5>
+                                <p class="card-text">Infos.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <h3>node2</h3>
+                    <div>Status.</div>
+                    <div class="row" id="mon-node2" style="padding: 15px">
+                        <div class="card" id="mon-node2-BTC" style="width: 14rem;">
+                            <div class="card-body">
+                                <h5 class="card-title">node2 - BTC</h5>
+                                <p class="card-text">Infos.</p>
+                            </div>
+                        </div>
+                        <div class="card" id="mon-node2-CON" style="width: 14rem;">
+                            <div class="card-body">
+                                <h5 class="card-title">node1 - CON</h5>
+                                <p class="card-text">Infos.</p>
+                            </div>
+                        </div>
+                        <div class="card" id="mon-node2-ELEMENTS" style="width: 14rem;">
+                            <div class="card-body">
+                                <h5 class="card-title">node2 - ELEMENTS</h5>
+                                <p class="card-text">Infos.</p>
+                            </div>
+                        </div>
+                        <div class="card" id="mon-node2-KMD" style="width: 14rem;">
+                            <div class="card-body">
+                                <h5 class="card-title">node1 - KMD</h5>
+                                <p class="card-text">Infos.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <h3>node4</h3>
+                    <div>Status.</div>
+                    <div class="row" id="mon-node4" style="padding: 15px">
+                        <div class="card" id="mon-node4-BTC" style="width: 14rem;">
+                            <div class="card-body">
+                                <h5 class="card-title">node4 - BTC</h5>
+                                <p class="card-text">Infos.</p>
+                            </div>
+                        </div>
+                        <div class="card" id="mon-node4-CON" style="width: 14rem;">
+                            <div class="card-body">
+                                <h5 class="card-title">node4 - CON</h5>
+                                <p class="card-text">Infos.</p>
+                            </div>
+                        </div>
+                        <div class="card" id="mon-node4-ELEMENTS" style="width: 14rem;">
+                            <div class="card-body">
+                                <h5 class="card-title">node4 - ELEMENTS</h5>
+                                <p class="card-text">Infos.</p>
+                            </div>
+                        </div>
+                        <div class="card" id="mon-node4-KMD" style="width: 14rem;">
+                            <div class="card-body">
+                                <h5 class="card-title">node4 - KMD</h5>
+                                <p class="card-text">Infos.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div col-12 class="col-12 text-left" id="log-info">
+                <button class="btn btn-primary" onclick="clearLog()">Clear log</button>
+                <div class="panel-err" id="err"></div>
+                <div class="panel-log" id="log"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleVisible(element, enable) {
+            if (enable) {
+                element.show()
+            } else {
+                element.hide()
+            }
+        }
+
+        function openSession(login, password) {
+            monitor_api.openSession({login, password}, (err, result) => {
+                stopRenewer();
+
+                const sessionRenewerId = setInterval(monitor_api.renewSession, 30000, onSessionRenew);
+                sessionStorage.setItem("monitorApi:sessionRenewerId", sessionRenewerId);
+                onSessionOpen(err, result);
+            })
+        };
+
+        function closeSession() {
+            stopRenewer();
+            updateLogin(false);
+
+            monitor_api.closeSession(onSessionClose);
+        };
+
+        function fetchMonitorBackend() {
+            monitor_api.serviceList(onMonitorBackend);
+            const sessionRenewerId = setInterval(monitor_api.serviceList, 5000, onMonitorBackend);
+        };
+
+
+        function onMonitorBackend(err, result) {
+            if (err) {
+                if (err.error) {
+                    err = err.error;
+                }
+                log($('#err'), "Error: " + JSON.stringify(err, null, 0));
+                return
+            }
+
+            $("span#mon-back-lastupdate").text(new Date().toLocaleTimeString());
+            
+
+            stackList = $("div#mon-back-stack-list")
+            stackList.empty();
+            createStack('condensat', stackList);
+            createStack('bank', stackList);
+            createStack('kyc', stackList);
+
+            $.each(result.services, function (index, service) {
+                // log($('#log'), "Backend Services: " + JSON.stringify(service));
+                addCardToStackDiv(service, createCard(service))
+            });
+
+            updateStackStatus("condensat", result.services);
+            updateStackStatus("bank", result.services);
+            updateStackStatus("kyc", result.services);
+
+        };
+
+        function fetchServiceHistory(appName) {
+            monitor_api.serviceHistory(appName, onServiceHistory);
+        }
+
+        function onServiceHistory(err, result) {
+            var appName = result.appName;
+            var timeData = result.history.timestamp;
+            var cpuData = result.history.cpu;
+            var memData = result.history.memory;
+
+            $("#chartModalLabel").text("Service: "+ appName)
+            $("span#mon-back-chart-lastupdate").text(new Date().toLocaleTimeString());
+            $("#chartModal").modal('show')
+
+            var ctx = document.getElementById('service-chart-canvas').getContext('2d');
+            if (window.serviceChart) {
+                window.serviceChart.destroy();
+                window.serviceChart = null;
+            }
+            window.serviceChart = new Chart(ctx, setupServiceChart(appName, timeData, cpuData, memData));
+        }
+
+        function stackSummary(name, services) {
+            result = {
+                name,
+                count: 0,
+                memory: 0,
+                treads: 0,
+                cpu: 0
+            };
+            name = name.toLowerCase();
+            $.each(services, function (index, service) {
+                stack = stackName(service.appName);
+                if (stack != name) {
+                    return
+                }
+                result.count++;
+                result.memory += service.memory;
+                result.treads += service.treads;
+                result.cpu += service.cpu;
+            });
+
+            return result;
+        };
+
+        function stackName(name) {
+            name = name.toLowerCase();
+            if (name.startsWith("bank")) {
+                return "bank";
+            } else if (name.startsWith("kyc")) {
+                return "kyc";
+            } else {
+                return "condensat";
+            }
+        }
+
+        function addCardToStackDiv(service, card) {
+            name = service.appName.toLowerCase();
+            stack = stackName(service.appName)
+            card.appendTo("div#mon-back-"+stack);
+        };
+
+        function createStack(name, stackList) {
+            stackId = "mon-back-" + name.toLowerCase();
+            stackStatusId = stackId+"-status";
+
+            colDiv = $('<div/>');
+            colDiv.append($('<h2>'+name+'</h2>'));
+            colDiv.append($('<div/>', { id: stackStatusId}));
+            stackDiv = $('<div/>', { id: stackId, class: "row", style: "padding: 15px" });
+            stackDiv.appendTo(colDiv)
+            colDiv.appendTo(stackList);
+        }
+
+        function updateStackStatus(name, services) {
+            stackId = "mon-back-" + name.toLowerCase();
+            stackStatusId = stackId+"-status";
+            statusDiv = $("div#"+stackStatusId);
+
+            summary = stackSummary(name, services);
+
+            status = "";
+            sep = " • ";
+            status += summary.count + " service";
+            if (summary.count > 1) {
+                status += "s";
+            }
+            status += sep
+
+            val = summary.memory/(1<<20);
+            val = parseFloat(val.toFixed(1)); 
+            status += "total memory: "+val.toFixed(2) + " MiB" + sep;
+
+            val = summary.cpu;
+            val = parseFloat(val.toFixed(1)); 
+            status += "total CPU: "+val.toFixed(2)+"%";
+
+            statusDiv.text(status)
+        }
+
+        function createCard(service) {
+            var name = service.appName;
+            cardDiv = $('<div/>', { id:"mon-back-"+name.toLowerCase(), class:"card", style: "width: 18rem;" });
+            {                
+                bodyDiv = $('<div/>', { 'class':"card-body"});
+                {
+                    titleDiv = $('<h5/>', { 'class':"card-title"});
+                    titleDiv.html(name)
+                    titleDiv.appendTo(bodyDiv)
+                    
+                    textDiv = $('<p/>', { 'class':"card-text"});
+                    chartIcon = $('<i/>', {'class': "fa fa-area-chart", 'aria-hidden': true})
+                    chartIcon.css( 'cursor', 'pointer' );
+
+                    chartIcon.bind('click', function() {
+                        fetchServiceHistory(name)
+                    });
+                    textDiv.append(chartIcon)
+
+                    li = $('<li/>');
+                    li.text("Replicats: " + service.serviceCount);
+                    li.appendTo(textDiv)
+
+                    val = service.memory/(1<<20);
+                    val = parseFloat(val.toFixed(1)); 
+                    li = $('<li/>');
+                    li.text("Mem: " + val.toFixed(2) + " MiB");
+                    li.appendTo(textDiv)
+
+                    val = service.memoryMax/(1<<20);
+                    val = parseFloat(val.toFixed(1)); 
+                    li = $('<li/>');
+                    li.text("Max: " + val.toFixed(2) + " MiB");
+                    li.appendTo(textDiv)
+
+                    li = $('<li/>');
+                    li.text("Threads: " + service.threadCount);
+                    li.appendTo(textDiv)
+
+                    val = parseFloat(service.cpu.toFixed(1));
+                    li = $('<li/>');
+                    li.text("CPU: " + val.toFixed(2) + " %");
+                    li.appendTo(textDiv)
+
+                    textDiv.appendTo(bodyDiv)
+                }
+                bodyDiv.appendTo(cardDiv)
+            }
+                
+            return cardDiv
+        };
+
+
+        function updateLogin(loggedIn) {
+            toggleVisible($('#btnLogin'), !loggedIn);
+            toggleVisible($('#btnLogout'), loggedIn);
+            toggleVisible($('#core-status'), false);
+            toggleVisible($('#backend-status'), true);
+            
+        };
+
+        function onSessionOpen(err, result) {
+            $('#loginModal').modal('hide');
+            $('#password').val('');
+
+            const loggedIn = !err && result.sessionId;
+            updateLogin(loggedIn);
+
+            fetchMonitorBackend();
+
+            if (err) {
+                if (err.error) {
+                    err = err.error;
+                }
+                log($('#err'), "Error: " + JSON.stringify(err, null, 0));
+                return;
+            }
+            log($('#log'), "Session Opened: " + result.sessionId)
+        };
+
+        function onSessionRenew(err, result) {
+            if (err) {
+                if (err.error) {
+                    err = err.error;
+                }
+                log($('#err'), "Error: " + JSON.stringify(err, null, 0));
+                return;
+            }
+
+            log($('#log'), "Session Renewed: " + result.sessionId);
+        }
+
+        function onSessionClose(err, result) {
+            if (err) {
+                if (err.error) {
+                    err = err.error;
+                }
+                log($('#err'), "Error: " + JSON.stringify(err, null, 0));
+                return
+            }
+            log($('#log'), "Session Closed: " + result.sessionId);
+        };
+
+        function setupServiceChart(serviceName, timeData, cpuData, memData) {
+            var timeFormat = 'HH:mm:ss';
+            var chartColors = {
+                red: 'rgb(255, 99, 132)',
+                orange: 'rgb(255, 159, 64)',
+                yellow: 'rgb(255, 205, 86)',
+                green: 'rgb(75, 192, 192)',
+                blue: 'rgb(54, 162, 235)',
+                purple: 'rgb(153, 102, 255)',
+                grey: 'rgb(201, 203, 207)'
+            };
+
+            var color = Chart.helpers.color;
+            return {
+                type: 'line',
+                data: {
+                    labels: timeData,
+                    datasets: [{
+                        yAxisID: 'y-axis-cpu',
+                        label: 'CPU',
+                        backgroundColor: color(chartColors.red).alpha(0.5).rgbString(),
+                        borderColor: chartColors.red,
+                        fill: false,
+                        cubicInterpolationMode: 'monotone',
+                        lineTension: 0.8,
+                        data: cpuData,
+                    }, {
+                        yAxisID: 'y-axis-mem',
+                        label: 'Memory',
+                        backgroundColor: color(chartColors.blue).alpha(0.5).rgbString(),
+                        borderColor: chartColors.blue,
+                        fill: true,
+                        steppedLine: 'middle',
+                        data: memData,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    title: {
+                        display: true,
+                        text: 'Service '+serviceName,
+                    },
+                    tooltips: {
+                        mode: 'index',
+                        position: 'nearest',
+                        intersect: false,
+                        callbacks: {
+                            label: function (tooltipItem, data) {
+                                var label = data.datasets[tooltipItem.datasetIndex].label || '';
+                                var value = tooltipItem.yLabel;
+
+                                var suffix = "";
+                                if (label=="CPU") {
+                                    suffix = "%";
+                                } else if (label=="Memory") {
+                                    suffix = " MiB";
+                                }
+
+                                if (label=="CPU") {
+                                    value = value;
+                                } else if (label=="Memory") {
+                                    value = (value / (1<<20));
+                                    value = value.toFixed(1);
+                                }
+
+                                // final label
+                                if (label) {
+                                    label += ': ';
+                                }
+                                label += value + suffix;
+                                return label;
+                            }
+                        }
+                    },
+                    hover: {
+                        mode: 'nearest',
+                        intersect: true
+                    },
+                    scales: {
+                        xAxes: [{
+                            type: 'time',
+                            time: {
+                                parser: timeFormat,
+                                tooltipFormat: 'HH:mm:ss'
+                            },
+                            scaleLabel: {
+                                display: true,
+                                label: 'Date'
+                            },
+                            gridLines: {
+                                drawOnChartArea: false,
+                            },
+                        }],
+                        yAxes: [{
+                            id: 'y-axis-cpu',
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            scaleLabel: {
+                                display: true,
+                                label: 'CPU'
+                            },
+                            ticks: {
+                                beginAtZero: true,
+                                suggestedMax: 5.0,
+                                callback: function(value, index, values) {
+                                    return value + "%";
+                                }
+                            },
+                            gridLines: {
+                                drawOnChartArea: false,
+                            },
+                        }, {
+                            id: 'y-axis-mem',
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            scaleLabel: {
+                                display: true,
+                                label: 'CPU'
+                            },
+                            ticks: {
+                                beginAtZero: true,
+                                suggestedMax: 16<<20,
+                                callback: function(value, index, values) {
+                                    return (value/(1<<20)).toFixed(1) + " MiB";
+                                }
+                            },
+                            gridLines: {
+                                drawOnChartArea: false,
+                            },
+                        }],
+                    },
+                }
+            };
+        };
+
+    </script>
+
+    <script>
+        $(document).ready(function(){
+            updateLogin(false);
+            openSession('demo', 'd3m0');
+        });
+
+        function stopRenewer() {
+            sessionRenewerId = sessionStorage.getItem("monitorApi:sessionRenewerId")
+            if (sessionRenewerId) {
+                clearInterval(sessionRenewerId);
+                sessionStorage.removeItem("monitorApi:sessionRenewerId");
+            }
+        }
+
+        function log(out, msg) {
+            d = new Date();
+            str = d.toLocaleDateString() + " - " + d.toLocaleTimeString();
+            out.prepend("<br/>" + str + " : " + msg);
+        }
+
+        function clearLog() {
+            $('#log').empty();
+            $('#err').empty();
+        };
+
+    </script>
+
+</body>
+</html>

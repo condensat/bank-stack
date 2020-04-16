@@ -1,0 +1,207 @@
+version: "3.7"
+
+services:
+  logger:
+    image: registry.condensat.space/condensat-logger:latest
+    networks:
+      - condensat
+      - bank
+    secrets:
+      - bank_db_password
+    command:
+      - --withDatabase=true
+      - --dbPassword=/run/secrets/bank_db_password
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.swiss == true
+      restart_policy:
+        condition: on-failure
+
+  bank:
+    image: registry.condensat.space/bank-api:latest
+    depends_on:
+      - logger
+    networks:
+      - condensat
+      - bank
+      - front
+    secrets:
+      - bank_db_password
+      - condensat_password_hash_seed
+      - bank_api_secureid
+      - bank_api_oauth_keys
+    command:
+      - --dbPassword=/run/secrets/bank_db_password
+      - --hash_seed=/run/secrets/condensat_password_hash_seed
+      - --secureId=/run/secrets/bank_api_secureid
+      - --oauthkeys=/run/secrets/bank_api_oauth_keys
+      - --log=debug
+    deploy:
+      replicas: 2
+      placement:
+        constraints:
+          - node.labels.swiss == true
+      restart_policy:
+        condition: on-failure
+      labels:
+        - traefik.enable=true
+        - traefik.docker.network=front
+
+        # http
+        - traefik.http.routers.bank.rule=Host(`bank.condensat.space`)
+        - traefik.http.routers.bank.entrypoints=web
+        - traefik.http.routers.bank.service=bank
+        - traefik.http.services.bank.loadBalancer.server.port=4242
+
+        ## bank-low-ratelimit
+        - traefik.http.middlewares.bank-low-ratelimit.ratelimit.average=20
+        - traefik.http.middlewares.bank-low-ratelimit.ratelimit.burst=2
+        - traefik.http.middlewares.bank-low-ratelimit.ratelimit.sourcecriterion.requesthost=true
+        - traefik.http.routers.bank.middlewares=bank-low-ratelimit
+        ## https-redirect
+        - traefik.http.middlewares.https-redirect.redirectscheme.scheme=https
+        - traefik.http.middlewares.https-redirect.redirectscheme.permanent=true    
+        - traefik.http.routers.bank.middlewares=https-redirect
+
+        # tls
+        - traefik.http.routers.bank-ssl.tls=true
+        - traefik.http.routers.bank-ssl.tls.certResolver=le-ssl
+        - traefik.http.routers.bank-ssl.rule=Host(`bank.condensat.space`)
+        - traefik.http.routers.bank-ssl.entrypoints=websecure
+        - traefik.http.routers.bank-ssl.service=bank
+        - traefik.http.services.bank-ssl.loadBalancer.server.port=4242
+
+        ## retry when scaling
+        - traefik.http.middlewares.bank-retry.retry.attempts=4
+        ## bank-high-ratelimit
+        - traefik.http.middlewares.bank-high-ratelimit.ratelimit.average=1000
+        - traefik.http.middlewares.bank-high-ratelimit.ratelimit.burst=100
+        - traefik.http.middlewares.bank-high-ratelimit.ratelimit.sourcecriterion.requesthost=true
+
+        ## add middlewares
+        - traefik.http.routers.bank-ssl.middlewares=bank-retry,bank-high-ratelimit
+
+  app:
+    image: registry.condensat.space/bank-webapp:latest
+    depends_on:
+      - logger
+      - api
+    networks:
+      - condensat
+      - bank
+      - front
+    command:
+      - --spa=true
+      - --log=debug
+    deploy:
+      replicas: 2
+      placement:
+        constraints:
+          - node.labels.swiss == true
+      restart_policy:
+        condition: on-failure
+      labels:
+        - traefik.enable=true
+        - traefik.docker.network=front
+
+        # http
+        - traefik.http.routers.app.rule=Host(`app.condensat.space`)
+        - traefik.http.routers.app.entrypoints=web
+        - traefik.http.routers.app.service=app
+        - traefik.http.services.app.loadBalancer.server.port=4420
+
+        ## app-low-ratelimit
+        - traefik.http.middlewares.app-low-ratelimit.ratelimit.average=20
+        - traefik.http.middlewares.app-low-ratelimit.ratelimit.burst=2
+        - traefik.http.middlewares.app-low-ratelimit.ratelimit.sourcecriterion.requesthost=true
+        - traefik.http.routers.app.middlewares=app-low-ratelimit
+        ## https-redirect
+        - traefik.http.middlewares.https-redirect.redirectscheme.scheme=https
+        - traefik.http.middlewares.https-redirect.redirectscheme.permanent=true    
+        - traefik.http.routers.app.middlewares=https-redirect
+
+        # tls
+        - traefik.http.routers.app-ssl.tls=true
+        - traefik.http.routers.app-ssl.tls.certResolver=le-ssl
+        - traefik.http.routers.app-ssl.rule=Host(`app.condensat.space`)
+        - traefik.http.routers.app-ssl.entrypoints=websecure
+        - traefik.http.routers.app-ssl.service=app
+        - traefik.http.services.app-ssl.loadBalancer.server.port=4420
+
+        ## retry when scaling
+        - traefik.http.middlewares.app-retry.retry.attempts=4
+        ## app-high-ratelimit
+        - traefik.http.middlewares.app-high-ratelimit.ratelimit.average=1000
+        - traefik.http.middlewares.app-high-ratelimit.ratelimit.burst=100
+        - traefik.http.middlewares.app-high-ratelimit.ratelimit.sourcecriterion.requesthost=true
+        ## basicauth
+        - traefik.http.middlewares.app-auth.basicauth.users=condensat:$$apr1$$kmhQzbA7$$rhqwTolvwgru0IULB.hQ40
+
+        ## add middlewares
+        - traefik.http.routers.app-ssl.middlewares=app-retry,app-high-ratelimit,app-auth
+
+  currency_rate:
+    image: registry.condensat.space/bank-currency-rate:latest
+    depends_on:
+      - logger
+    networks:
+      - condensat
+      - bank
+    secrets:
+      - bank_db_password
+      - openexchangerates_app_id
+    command:
+      - --dbPassword=/run/secrets/bank_db_password
+      - --appId=/run/secrets/openexchangerates_app_id
+      - --fetchInterval=1h
+      - --fetchDelay=5s
+      - --log=debug
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.swiss == true
+      restart_policy:
+        condition: on-failure
+
+  accounting:
+    image: registry.condensat.space/bank-accounting:latest
+    depends_on:
+      - logger
+    networks:
+      - condensat
+      - bank
+    secrets:
+      - bank_db_password
+    command:
+      - --dbPassword=/run/secrets/bank_db_password
+      - --log=info
+    deploy:
+      replicas: 2
+      placement:
+        constraints:
+          - node.labels.swiss == true
+      restart_policy:
+        condition: on-failure
+
+secrets:
+  bank_db_password:
+    external: true
+  condensat_password_hash_seed:
+    external: true
+  bank_api_secureid:
+    external: true
+  bank_api_oauth_keys:
+    external: true
+  openexchangerates_app_id:
+    external: true
+
+networks:
+  condensat:
+    external: true
+  bank:
+    external: true
+  front:
+    external: true
