@@ -93,6 +93,7 @@ services:
       - bank
       - front
     command:
+      - --spa=true
       - --log=debug
     deploy:
       replicas: 2
