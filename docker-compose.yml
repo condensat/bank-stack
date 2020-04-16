@@ -137,10 +137,10 @@ services:
         - traefik.http.middlewares.app-high-ratelimit.ratelimit.burst=100
         - traefik.http.middlewares.app-high-ratelimit.ratelimit.sourcecriterion.requesthost=true
         ## basicauth
-        - traefik.http.middlewares.app-auth.basicauth.users=condensat:$$apr1$$kmhQzbA7$$rhqwTolvwgru0IULB.hQ40
+        # - traefik.http.middlewares.app-auth.basicauth.users=condensat:$$apr1$$kmhQzbA7$$rhqwTolvwgru0IULB.hQ40
 
         ## add middlewares
-        - traefik.http.routers.app-ssl.middlewares=app-retry,app-high-ratelimit,app-auth
+        - traefik.http.routers.app-ssl.middlewares=app-retry,app-high-ratelimit
 
   currency_rate:
     image: registry.condensat.space/bank-currency-rate:latest
