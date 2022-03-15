@@ -66,6 +66,11 @@ bank-currency-rate:
 	@docker build . -f images/bank/Dockerfile $(GITLAB_BUILD_ARGS) --build-arg=BANK_APP_SRC=bank/currency/rate/cmd/grabber/main.go -t registry.condensat.space/bank-currency-rate
 	@docker push registry.condensat.space/bank-currency-rate
 
+cli:
+	@cd ./bank && GOOS=linux GOARCH=amd64 go build -tags netgo -ldflags="-s -w" -trimpath -o ../bank-account-manager ./accounting/cmd/bank-account-manager/
+	@cd ./bank && GOOS=linux GOARCH=amd64 go build -tags netgo -ldflags="-s -w" -trimpath -o ../bank-user-manager ./api/cmd/bank-user-manager
+	@tar cz -f bank-cli.tar.gz bank-account-manager bank-user-manager
+	@rm bank-account-manager bank-user-manager
 
 clean:
 	@echo docker rmi $(docker rmi registry.condensat.space/bank-logger registry.condensat.space/bank-api)
