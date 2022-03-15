@@ -1,4 +1,4 @@
-FROM golang:1.13-alpine3.11 AS builder
+FROM amd64/golang:1.13-alpine3.11 AS builder
 
 RUN apk add --no-cache alpine-sdk
 
@@ -16,11 +16,18 @@ ARG BANK_APP_SRC=
 
 ADD ./bank ./
 RUN mkdir /stage
-RUN export CGO_ENABLED=1
-RUN go build -tags netgo -ldflags="-s -w" -trimpath -o "/stage/app" "./${BANK_APP_SRC#bank/}"
+RUN export CGO_ENABLED=0
 
+## dev build (fast)
+RUN go build -tags netgo -o "/stage/app" "./${BANK_APP_SRC#bank/}"
 
-FROM alpine:3.11
+## prod build (slow)
+# RUN go build -tags netgo   "/stage/app" "./${BANK_APP_SRC#bank/}"
+
+# Todo: Add version
+# -ldflags "-X main.Version=version" # $(git describe)
+
+FROM amd64/alpine:3.11
 RUN apk add --no-cache ca-certificates
 
 COPY --from=builder "/stage/app" /
